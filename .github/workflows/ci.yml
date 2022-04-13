@@ -8,7 +8,6 @@ env:
   RUST_BACKTRACE: 1
   RUSTFLAGS: -Dwarnings
 
-
 jobs:
   build_and_test_nix:
     name: Build and test (Nix)
@@ -16,7 +15,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macOS-latest]
-        rust: [nightly, beta, stable]
+        rust: [beta, stable]
 
     steps:
     - name: Checkout
@@ -36,13 +35,6 @@ jobs:
         command: check
         args: --all --bins --tests
 
-    - name: check nightly
-      uses: actions-rs/cargo@v1
-      if: matrix.rust == 'nightly'
-      with:
-        command:  check
-        args: --features nightly --all --bins --examples --tests
-
     - name: check wasm
       uses: actions-rs/cargo@v1
       with:
@@ -51,39 +43,11 @@ jobs:
         override: true
         args: --features wasm --all --bins
 
-    - name: check bench
-      uses: actions-rs/cargo@v1
-      if: matrix.rust == 'nightly'
-      with:
-        command:  check
-        args: --benches
-
-    - name: check asm
-      uses: actions-rs/cargo@v1
-      if: matrix.rust == 'nightly'
-      with:
-        command:  check
-        args: --features asm
-        
     - name: tests
       uses: actions-rs/cargo@v1
       with:
         command: test
         args: --all 
-
-    - name: nightly
-      uses: actions-rs/cargo@v1
-      if: matrix.rust == 'nightly'
-      with:
-        command: test
-        args: --all  --features nightly
-
-    - name: asm
-      uses: actions-rs/cargo@v1
-      if: matrix.rust == 'nightly'
-      with:
-        command: test
-        args: --all --features asm
 
     - name: tests ignored
       uses: actions-rs/cargo@v1
@@ -91,28 +55,13 @@ jobs:
         command: test
         args: --all --release -- --ignored
 
-    - name: nightly ignored
-      uses: actions-rs/cargo@v1
-      if: matrix.rust == 'nightly'
-      with:
-        command: test
-        args: --all --features nightly --release -- --ignored
-
-    - name: asm ignored
-      uses: actions-rs/cargo@v1
-      if: matrix.rust == 'nightly'
-      with:
-        command: test
-        args: --all --features asm --release -- --ignored
-
-
   build_and_test_windows:
     name: Build and test (Windows)
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [windows-latest]
-        rust: [nightly, beta, stable]
+        rust: [beta, stable]
         target:
           - x86_64-pc-windows-gnu
           # FIXME
@@ -138,13 +87,6 @@ jobs:
         command: check
         args: --all --bins --tests --target ${{ matrix.target }}
 
-    - name: check nightly
-      uses: actions-rs/cargo@v1
-      if: matrix.rust == 'nightly'
-      with:
-        command:  check
-        args: --features nightly --all --bins --examples --tests --target ${{ matrix.target }}
-
     - name: check wasm
       uses: actions-rs/cargo@v1
       with:
@@ -152,33 +94,11 @@ jobs:
         override: true
         args: --features wasm --all --bins --target wasm32-unknown-unknown
 
-    - name: check bench
-      uses: actions-rs/cargo@v1
-      if: matrix.rust == 'nightly'
-      with:
-        command:  check
-        target: ${{ matrix.target }}
-        args: --benches
-
-    - name: check asm
-      uses: actions-rs/cargo@v1
-      if: matrix.rust == 'nightly' && matrix.target == 'x86_64-pc-windows-gnu'
-      with:
-        command:  check
-        args: --features asm  --target ${{ matrix.target }}
-        
     - name: tests
       uses: actions-rs/cargo@v1
       with:
         command: test
         args: --all  --target ${{ matrix.target }}
-
-    - name: nightly
-      uses: actions-rs/cargo@v1
-      if: matrix.rust == 'nightly'
-      with:
-        command: test
-        args: --all  --features nightly --target ${{ matrix.target }}
 
     # FIXME
     # - name: asm
@@ -193,13 +113,6 @@ jobs:
       with:
         command: test
         args: --all  --target ${{ matrix.target }} --release -- --ignored
-
-    - name: nightly ignored
-      uses: actions-rs/cargo@v1
-      if: matrix.rust == 'nightly'
-      with:
-        command: test
-        args: --all  --features nightly --target ${{ matrix.target }} --release -- --ignored
 
     # FIXME
     # - name: asm ignored
@@ -229,12 +142,6 @@ jobs:
       with:
         submodules: recursive
 
-    - name: Install nightly
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: nightly
-        override: true
-
     - name: Install cross
       run: cargo install cross
 
@@ -249,7 +156,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust: [nightly, beta, stable]
+        rust: [beta, stable]
 
     steps:
     - uses: actions/checkout@master
@@ -272,7 +179,7 @@ jobs:
       with:
         command: check
         args: --target wasm32-unknown-unknown --features wasm
-        
+
   check_fmt_and_docs:
     name: Checking fmt and docs
     runs-on: ubuntu-latest
@@ -282,7 +189,6 @@ jobs:
     - uses: actions-rs/toolchain@v1
       with:
           profile: minimal
-          toolchain: nightly
           override: true
           components: rustfmt
 
@@ -304,7 +210,6 @@ jobs:
     - uses: actions-rs/toolchain@v1
       with:
           profile: minimal
-          toolchain: nightly
           override: true
           components: clippy
     - uses: actions-rs/clippy-check@v1
