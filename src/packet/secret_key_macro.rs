@@ -199,6 +199,9 @@ macro_rules! impl_secret_key {
                             },
                             _ => unreachable!("inconsistent key state"),
                         },
+                        SecretKeyRepr::Picnic(ref secret) => {
+                            $crate::crypto::picnic::sign(secret, data)
+                        }
                     }?;
 
                     // strip leading zeros, to match parse results from MPIs

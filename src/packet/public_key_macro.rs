@@ -285,6 +285,9 @@ macro_rules! impl_public_key {
                     PublicParams::DSA { .. } => {
                         unimplemented_err!("verify DSA");
                     }
+                    PublicParams::Picnic { ref pk } => {
+                        $crate::crypto::picnic::verify(pk.as_bytes(), hashed, sig)
+                    }
                 }
             }
 
@@ -317,6 +320,7 @@ macro_rules! impl_public_key {
                     ),
                     PublicParams::Elgamal { .. } => unimplemented_err!("encryption with Elgamal"),
                     PublicParams::DSA { .. } => bail!("DSA is only used for signing"),
+                    PublicParams::Picnic { .. } => bail!("Picnic is only used for signing"),
                 }?;
 
                 Ok(res

@@ -39,6 +39,9 @@ pub enum PublicParams {
         curve: ECCCurve,
         q: Mpi,
     },
+    Picnic {
+        pk: Mpi,
+    },
 }
 
 impl Serialize for PublicParams {
@@ -103,6 +106,9 @@ impl Serialize for PublicParams {
 
                 q.to_writer(writer)?;
             }
+            PublicParams::Picnic { pk } => {
+                pk.to_writer(writer)?;
+            }
         }
 
         Ok(())
@@ -161,6 +167,10 @@ impl fmt::Debug for PublicParams {
                 .debug_struct("PublicParams::EdDSA")
                 .field("curve", curve)
                 .field("q", &q)
+                .finish(),
+            PublicParams::Picnic { pk } => f
+                .debug_struct("PublicParams::Picnic")
+                .field("pk", pk)
                 .finish(),
         }
     }

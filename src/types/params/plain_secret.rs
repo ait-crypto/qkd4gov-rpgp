@@ -21,6 +21,7 @@ pub enum PlainSecretParams {
     ECDH(Mpi),
     Elgamal(Mpi),
     EdDSA(Mpi),
+    Picnic(Mpi),
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -36,6 +37,7 @@ pub enum PlainSecretParamsRef<'a> {
     ECDH(MpiRef<'a>),
     Elgamal(MpiRef<'a>),
     EdDSA(MpiRef<'a>),
+    Picnic(MpiRef<'a>),
 }
 
 impl<'a> PlainSecretParamsRef<'a> {
@@ -58,6 +60,7 @@ impl<'a> PlainSecretParamsRef<'a> {
             PlainSecretParamsRef::ECDH(v) => PlainSecretParams::ECDH((*v).to_owned()),
             PlainSecretParamsRef::Elgamal(v) => PlainSecretParams::Elgamal((*v).to_owned()),
             PlainSecretParamsRef::EdDSA(v) => PlainSecretParams::EdDSA((*v).to_owned()),
+            PlainSecretParamsRef::Picnic(v) => PlainSecretParams::Picnic((*v).to_owned()),
         }
     }
 
@@ -87,6 +90,9 @@ impl<'a> PlainSecretParamsRef<'a> {
             }
             PlainSecretParamsRef::EdDSA(x) => {
                 (*x).to_writer(writer)?;
+            }
+            PlainSecretParamsRef::Picnic(sk) => {
+                sk.to_writer(writer)?;
             }
         }
 
@@ -185,6 +191,9 @@ impl<'a> PlainSecretParamsRef<'a> {
             PlainSecretParamsRef::ECDSA(_) => {
                 unimplemented_err!("ECDSA");
             }
+            PlainSecretParamsRef::Picnic(sk) => Ok(SecretKeyRepr::Picnic(PicnicSecretKey {
+                secret: sk.as_bytes().to_vec(),
+            })),
         }
     }
 }
@@ -220,6 +229,7 @@ impl PlainSecretParams {
             PlainSecretParams::ECDH(v) => PlainSecretParamsRef::ECDH(v.as_ref()),
             PlainSecretParams::Elgamal(v) => PlainSecretParamsRef::Elgamal(v.as_ref()),
             PlainSecretParams::EdDSA(v) => PlainSecretParamsRef::EdDSA(v.as_ref()),
+            PlainSecretParams::Picnic(v) => PlainSecretParamsRef::Picnic(v.as_ref()),
         }
     }
 
@@ -297,6 +307,7 @@ impl<'a> fmt::Debug for PlainSecretParamsRef<'a> {
             PlainSecretParamsRef::ECDSA(_) => write!(f, "PlainSecretParams(ECDSA)"),
             PlainSecretParamsRef::ECDH(_) => write!(f, "PlainSecretParams(ECDH)"),
             PlainSecretParamsRef::EdDSA(_) => write!(f, "PlainSecretParams(EdDSA)"),
+            PlainSecretParamsRef::Picnic(_) => write!(f, "PlainSecretParams(Picnic)"),
         }
     }
 }
@@ -310,7 +321,8 @@ named_args!(parse_secret_params(alg: PublicKeyAlgorithm) <PlainSecretParamsRef<'
     PublicKeyAlgorithm::Elgamal => do_parse!(x: mpi >> (PlainSecretParamsRef::Elgamal(x)))  |
     PublicKeyAlgorithm::ECDH    => do_parse!(x: mpi >> (PlainSecretParamsRef::ECDH(x)))  |
     PublicKeyAlgorithm::ECDSA   => do_parse!(x: mpi >> (PlainSecretParamsRef::ECDSA(x))) |
-    PublicKeyAlgorithm::EdDSA   => do_parse!(x: mpi >> (PlainSecretParamsRef::EdDSA(x)))
+    PublicKeyAlgorithm::EdDSA   => do_parse!(x: mpi >> (PlainSecretParamsRef::EdDSA(x))) |
+    PublicKeyAlgorithm::Picnic  => do_parse!(x: mpi >> (PlainSecretParamsRef::Picnic(x)))
 ));
 
 // Parse the decrpyted private params of an RSA private key.

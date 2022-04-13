@@ -33,6 +33,7 @@ where
                 ecdh::decrypt(priv_key, mpis, &locked_key.fingerprint())?
             }
             SecretKeyRepr::EdDSA(_) => unimplemented_err!("EdDSA"),
+            SecretKeyRepr::Picnic(_) => bail!("Picnic is only used for signing"),
         };
         let algorithm = SymmetricKeyAlgorithm::from_u8(decrypted_key[0])
             .ok_or_else(|| format_err!("invalid symmetric key algorithm"))?;

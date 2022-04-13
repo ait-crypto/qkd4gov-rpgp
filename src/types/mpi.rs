@@ -11,7 +11,7 @@ use crate::util::{bit_size, strip_leading_zeros, strip_leading_zeros_vec};
 
 /// Number of bits we accept when reading or writing MPIs.
 /// The value is the same as gnupgs.
-const MAX_EXTERN_MPI_BITS: u32 = 16384;
+pub const MAX_EXTERN_MPI_BITS: u32 = 16384;
 
 /// Parse Multi Precision Integers
 /// Ref: https://tools.ietf.org/html/rfc4880.html#section-3.2

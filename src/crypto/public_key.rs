@@ -34,4 +34,6 @@ pub enum PublicKeyAlgorithm {
     Private108 = 108,
     Private109 = 109,
     Private110 = 110,
+    // TODO: get a real number assigned
+    Picnic = 111,
 }

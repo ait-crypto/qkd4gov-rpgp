@@ -8,6 +8,7 @@ use smallvec::SmallVec;
 
 use crate::crypto::aead::AeadAlgorithm;
 use crate::crypto::hash::HashAlgorithm;
+use crate::crypto::picnic;
 use crate::crypto::public_key::PublicKeyAlgorithm;
 use crate::crypto::sym::SymmetricKeyAlgorithm;
 use crate::de::Deserialize;
@@ -335,6 +336,7 @@ named_args!(actual_signature<'a>(typ: &PublicKeyAlgorithm) <&'a [u8], Vec<Mpi>>,
     &PublicKeyAlgorithm::Private108 |
     &PublicKeyAlgorithm::Private109 |
     &PublicKeyAlgorithm::Private110  => map!(call!(mpi), |v| vec![v.to_owned()]) |
+    &PublicKeyAlgorithm::Picnic => fold_many_m_n!(picnic::NUM_MPIS, picnic::NUM_MPIS, mpi, Vec::new(), |mut acc: Vec<Mpi>, item: MpiRef<'_> | { acc.push(item.to_owned()); acc})  |
     _ => map!(call!(mpi), |v| vec![v.to_owned()])
 ));
 

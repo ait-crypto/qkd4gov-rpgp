@@ -94,6 +94,12 @@ named!(rsa<PublicParams>, do_parse!(
     >> (PublicParams::RSA { n, e })
 ));
 
+#[rustfmt::skip]
+named!(picnic<PublicParams>, do_parse!(
+        pk: map!(mpi, to_owned)
+     >> (PublicParams::Picnic { pk:  pk })
+));
+
 // Parse the fields of a public key.
 named_args!(pub parse_pub_fields(typ: PublicKeyAlgorithm) <PublicParams>, switch!(
     value!(typ),
@@ -105,8 +111,9 @@ named_args!(pub parse_pub_fields(typ: PublicKeyAlgorithm) <PublicParams>, switch
     PublicKeyAlgorithm::ECDH       => call!(ecdh)    |
     PublicKeyAlgorithm::Elgamal    |
     PublicKeyAlgorithm::ElgamalSign => call!(elgamal) |
-    PublicKeyAlgorithm::EdDSA       => call!(eddsa)
+    PublicKeyAlgorithm::EdDSA       => call!(eddsa) |
     // &PublicKeyAlgorithm::DiffieHellman =>
+    PublicKeyAlgorithm::Picnic => call!(picnic)
 ));
 
 named_args!(new_public_key_parser<'a>(key_ver: &'a KeyVersion) <(KeyVersion, PublicKeyAlgorithm, DateTime<Utc>, Option<u16>, PublicParams)>, do_parse!(

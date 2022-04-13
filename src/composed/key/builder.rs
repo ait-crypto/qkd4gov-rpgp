@@ -5,7 +5,9 @@ use rand::{thread_rng, CryptoRng, Rng};
 use smallvec::SmallVec;
 
 use crate::composed::{KeyDetails, SecretKey, SecretSubkey};
-use crate::crypto::{ecdh, eddsa, rsa, HashAlgorithm, PublicKeyAlgorithm, SymmetricKeyAlgorithm};
+use crate::crypto::{
+    ecdh, eddsa, picnic, rsa, HashAlgorithm, PublicKeyAlgorithm, SymmetricKeyAlgorithm,
+};
 use crate::errors::Result;
 use crate::packet::{self, KeyFlags, UserAttribute, UserId};
 use crate::types::{self, CompressionAlgorithm, PublicParams, RevocationKey};
@@ -217,6 +219,8 @@ pub enum KeyType {
     ECDH,
     /// Signing with Curve25519
     EdDSA,
+    /// Signing with Picnic
+    Picnic,
 }
 
 impl KeyType {
@@ -225,6 +229,7 @@ impl KeyType {
             KeyType::Rsa(_) => PublicKeyAlgorithm::RSA,
             KeyType::ECDH => PublicKeyAlgorithm::ECDH,
             KeyType::EdDSA => PublicKeyAlgorithm::EdDSA,
+            KeyType::Picnic => PublicKeyAlgorithm::Picnic,
         }
     }
 
@@ -245,6 +250,7 @@ impl KeyType {
             KeyType::Rsa(bit_size) => rsa::generate_key(rng, bit_size as usize)?,
             KeyType::ECDH => ecdh::generate_key(rng),
             KeyType::EdDSA => eddsa::generate_key(rng),
+            KeyType::Picnic => picnic::generate_key(),
         };
 
         let secret = match passphrase {
@@ -477,6 +483,86 @@ mod tests {
             .expect("failed to serialize public key");
 
         std::fs::write("sample-x25519.pub.asc", &armor).unwrap();
+
+        let (signed_key2, _headers) =
+            SignedPublicKey::from_string(&armor).expect("failed to parse public key");
+        signed_key2.verify().expect("invalid public key");
+    }
+
+    #[test]
+    fn key_gen_picnic_short() {
+        let rng = &mut ChaCha8Rng::seed_from_u64(0);
+        for _ in 0..100 {
+            gen_picnic(rng);
+        }
+    }
+
+    fn gen_picnic<R: Rng + CryptoRng>(rng: &mut R) {
+        let _ = pretty_env_logger::try_init();
+
+        let key_params = SecretKeyParamsBuilder::default()
+            .key_type(KeyType::Picnic)
+            .can_create_certificates(true)
+            .can_sign(true)
+            .primary_user_id("Me-X <me-picnic@mail.com>".into())
+            .passphrase(None)
+            .preferred_symmetric_algorithms(smallvec![
+                SymmetricKeyAlgorithm::AES256,
+                SymmetricKeyAlgorithm::AES192,
+                SymmetricKeyAlgorithm::AES128,
+            ])
+            .preferred_hash_algorithms(smallvec![
+                HashAlgorithm::SHA2_256,
+                HashAlgorithm::SHA2_384,
+                HashAlgorithm::SHA2_512,
+                HashAlgorithm::SHA2_224,
+                HashAlgorithm::SHA1,
+            ])
+            .preferred_compression_algorithms(smallvec![
+                CompressionAlgorithm::ZLIB,
+                CompressionAlgorithm::ZIP,
+            ])
+            .subkey(
+                SubkeyParamsBuilder::default()
+                    .key_type(KeyType::ECDH)
+                    .can_encrypt(true)
+                    .passphrase(None)
+                    .build()
+                    .unwrap(),
+            )
+            .build()
+            .unwrap();
+
+        let key = key_params
+            .generate_with_rng(rng)
+            .expect("failed to generate secret key");
+
+        let signed_key = key.sign(|| "".into()).expect("failed to sign key");
+        let armor = signed_key
+            .to_armored_string(None)
+            .expect("failed to serialize key");
+
+        std::fs::write("sample-picnic.sec.asc", &armor).unwrap();
+
+        let (signed_key2, _headers) =
+            SignedSecretKey::from_string(&armor).expect("failed to parse key");
+        signed_key2.verify().expect("invalid key");
+
+        assert_eq!(signed_key, signed_key2);
+
+        let public_key = signed_key.public_key();
+
+        let public_signed_key = public_key
+            .sign(&signed_key, || "".into())
+            .expect("failed to sign public key");
+
+        public_signed_key.verify().expect("invalid public key");
+
+        let armor = public_signed_key
+            .to_armored_string(None)
+            .expect("failed to serialize public key");
+
+        std::fs::write("sample-picnic.pub.asc", &armor).unwrap();
 
         let (signed_key2, _headers) =
             SignedPublicKey::from_string(&armor).expect("failed to parse public key");

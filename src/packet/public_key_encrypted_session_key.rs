@@ -80,7 +80,8 @@ named_args!(parse_mpis<'a>(alg: &'a PublicKeyAlgorithm) <Vec<Mpi>>, switch!(
     value!(alg),
     &PublicKeyAlgorithm::RSA |
     &PublicKeyAlgorithm::RSASign |
-    &PublicKeyAlgorithm::RSAEncrypt => map!(mpi, |v| vec![v.to_owned()]) |
+    &PublicKeyAlgorithm::RSAEncrypt |
+    &PublicKeyAlgorithm::Picnic => map!(mpi, |v| vec![v.to_owned()]) |
     &PublicKeyAlgorithm::Elgamal |
     &PublicKeyAlgorithm::ElgamalSign => do_parse!(
           first: mpi
@@ -132,7 +133,8 @@ impl Serialize for PublicKeyEncryptedSessionKey {
             | PublicKeyAlgorithm::RSASign
             | PublicKeyAlgorithm::RSAEncrypt
             | PublicKeyAlgorithm::Elgamal
-            | PublicKeyAlgorithm::ElgamalSign => {
+            | PublicKeyAlgorithm::ElgamalSign
+            | PublicKeyAlgorithm::Picnic => {
                 for mpi in &self.mpis {
                     mpi.to_writer(writer)?;
                 }

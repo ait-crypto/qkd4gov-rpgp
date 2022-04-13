@@ -16,6 +16,7 @@ pub enum SecretKeyRepr {
     ECDSA,
     ECDH(ECDHSecretKey),
     EdDSA(EdDSASecretKey),
+    Picnic(PicnicSecretKey),
 }
 
 /// Secret key for ECDH with Curve25519, the only combination we currently support.
@@ -68,5 +69,21 @@ pub struct DSASecretKey {
 impl fmt::Debug for DSASecretKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("DSASecretKey").field("x", &"[..]").finish()
+    }
+}
+
+/// Secret key for Picnic
+#[derive(Clone, PartialEq, Eq, Zeroize)]
+#[zeroize(drop)]
+pub struct PicnicSecretKey {
+    /// The secret key.
+    pub(crate) secret: Vec<u8>,
+}
+
+impl fmt::Debug for PicnicSecretKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PicnicSecretKey")
+            .field("secret", &"[..]".to_string())
+            .finish()
     }
 }
