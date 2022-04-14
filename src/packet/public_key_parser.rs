@@ -97,7 +97,7 @@ named!(rsa<PublicParams>, do_parse!(
 #[rustfmt::skip]
 named!(picnic<PublicParams>, do_parse!(
         pk: map!(mpi, to_owned)
-     >> (PublicParams::Picnic { pk:  pk })
+     >> (PublicParams::Picnic { pk })
 ));
 
 // Parse the fields of a public key.
