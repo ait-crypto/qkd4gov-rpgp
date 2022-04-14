@@ -35,14 +35,6 @@ jobs:
         command: check
         args: --all --bins --tests
 
-    - name: check wasm
-      uses: actions-rs/cargo@v1
-      with:
-        command:  check
-        target: wasm32-unknown-unknown
-        override: true
-        args: --features wasm --all --bins
-
     - name: tests
       uses: actions-rs/cargo@v1
       with:
@@ -86,13 +78,6 @@ jobs:
       with:
         command: check
         args: --all --bins --tests --target ${{ matrix.target }}
-
-    - name: check wasm
-      uses: actions-rs/cargo@v1
-      with:
-        command:  check
-        override: true
-        args: --features wasm --all --bins --target wasm32-unknown-unknown
 
     - name: tests
       uses: actions-rs/cargo@v1
