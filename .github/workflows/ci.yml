@@ -119,7 +119,7 @@ jobs:
           # FIXME
           # - powerpc64-unknown-linux-gnu
           - mips-unknown-linux-gnu
-          - arm-linux-androideabi
+          # - arm-linux-androideabi
 
     steps:
     - name: Checkout
