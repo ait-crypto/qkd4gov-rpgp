@@ -22,11 +22,13 @@ fn as_mpi_(bytes: &[u8]) -> Mpi {
     Mpi::from_raw(v)
 }
 
+/*
 /// Convert a byte-arrayish into multiple [Mpi]s
 pub fn as_mpis(value: &impl AsRef<[u8]>) -> Vec<Mpi> {
     let bytes = value.as_ref();
     bytes.chunks(MAX_SIZE).map(as_mpi_).collect()
 }
+*/
 
 /// Convert [Mpi]s back into a [u8] vector
 pub fn from_mpis(mpis: &[Mpi]) -> Result<Vec<u8>> {
@@ -70,7 +72,7 @@ pub fn strip_marker(bytes: &[u8]) -> Result<&[u8]> {
 
 #[cfg(test)]
 mod test {
-    use super::{as_mpi, as_mpis, from_mpi, from_mpis, MAX_SIZE};
+    use super::{as_mpi, from_mpi, MAX_SIZE};
 
     #[test]
     fn single_mpi() {
@@ -82,6 +84,7 @@ mod test {
         assert_eq!(orig, converted.as_slice());
     }
 
+    /*
     #[test]
     fn multiple_mpi() {
         let orig = [0u8; 2 * MAX_SIZE];
@@ -92,4 +95,5 @@ mod test {
         let converted = from_mpis(&mpis).expect("Unable to convert from Mpis");
         assert_eq!(orig, converted.as_slice());
     }
+    */
 }
