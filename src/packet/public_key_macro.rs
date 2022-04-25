@@ -288,6 +288,9 @@ macro_rules! impl_public_key {
                     PublicParams::Picnic { ref pk } => {
                         $crate::crypto::picnic::verify(pk.as_bytes(), hashed, sig)
                     }
+                    PublicParams::Kyber { .. } => {
+                        unimplemented_err!("verify Kyber");
+                    }
                 }
             }
 
@@ -321,6 +324,9 @@ macro_rules! impl_public_key {
                     PublicParams::Elgamal { .. } => unimplemented_err!("encryption with Elgamal"),
                     PublicParams::DSA { .. } => bail!("DSA is only used for signing"),
                     PublicParams::Picnic { .. } => bail!("Picnic is only used for signing"),
+                    PublicParams::Kyber { ref pk } => {
+                        $crate::crypto::kyber::encrypt(pk, &self.fingerprint(), plain)
+                    }
                 }?;
 
                 Ok(res

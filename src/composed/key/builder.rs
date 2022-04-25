@@ -6,7 +6,7 @@ use smallvec::SmallVec;
 
 use crate::composed::{KeyDetails, SecretKey, SecretSubkey};
 use crate::crypto::{
-    ecdh, eddsa, picnic, rsa, HashAlgorithm, PublicKeyAlgorithm, SymmetricKeyAlgorithm,
+    ecdh, eddsa, kyber, picnic, rsa, HashAlgorithm, PublicKeyAlgorithm, SymmetricKeyAlgorithm,
 };
 use crate::errors::Result;
 use crate::packet::{self, KeyFlags, UserAttribute, UserId};
@@ -221,6 +221,8 @@ pub enum KeyType {
     EdDSA,
     /// Signing with Picnic
     Picnic,
+    /// Encrpyting with Kyber
+    Kyber,
 }
 
 impl KeyType {
@@ -230,6 +232,7 @@ impl KeyType {
             KeyType::ECDH => PublicKeyAlgorithm::ECDH,
             KeyType::EdDSA => PublicKeyAlgorithm::EdDSA,
             KeyType::Picnic => PublicKeyAlgorithm::Picnic,
+            KeyType::Kyber => PublicKeyAlgorithm::Kyber,
         }
     }
 
@@ -251,6 +254,7 @@ impl KeyType {
             KeyType::ECDH => ecdh::generate_key(rng),
             KeyType::EdDSA => eddsa::generate_key(rng),
             KeyType::Picnic => picnic::generate_key(),
+            KeyType::Kyber => kyber::generate_key(),
         };
 
         let secret = match passphrase {
@@ -490,14 +494,14 @@ mod tests {
     }
 
     #[test]
-    fn key_gen_picnic_short() {
+    fn key_gen_kyber_picnic_short() {
         let rng = &mut ChaCha8Rng::seed_from_u64(0);
         for _ in 0..100 {
-            gen_picnic(rng);
+            gen_kyber_picnic(rng);
         }
     }
 
-    fn gen_picnic<R: Rng + CryptoRng>(rng: &mut R) {
+    fn gen_kyber_picnic<R: Rng + CryptoRng>(rng: &mut R) {
         let _ = pretty_env_logger::try_init();
 
         let key_params = SecretKeyParamsBuilder::default()
@@ -524,7 +528,7 @@ mod tests {
             ])
             .subkey(
                 SubkeyParamsBuilder::default()
-                    .key_type(KeyType::ECDH)
+                    .key_type(KeyType::Kyber)
                     .can_encrypt(true)
                     .passphrase(None)
                     .build()

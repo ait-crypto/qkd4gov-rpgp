@@ -202,6 +202,9 @@ macro_rules! impl_secret_key {
                         SecretKeyRepr::Picnic(ref secret) => {
                             $crate::crypto::picnic::sign(secret, data)
                         }
+                        SecretKeyRepr::Kyber(_) => {
+                            bail!("Kyber can not be used for signing operations")
+                        }
                     }?;
 
                     // strip leading zeros, to match parse results from MPIs

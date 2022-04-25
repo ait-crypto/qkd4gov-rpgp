@@ -42,6 +42,11 @@ pub enum PublicParams {
     Picnic {
         pk: Mpi,
     },
+    Kyber {
+        pk: Mpi,
+        // hash: HashAlgorithm,
+        // alg_sym: SymmetricKeyAlgorithm,
+    },
 }
 
 impl Serialize for PublicParams {
@@ -106,7 +111,10 @@ impl Serialize for PublicParams {
 
                 q.to_writer(writer)?;
             }
-            PublicParams::Picnic { pk } => {
+            PublicParams::Picnic { ref pk } => {
+                pk.to_writer(writer)?;
+            }
+            PublicParams::Kyber { ref pk } => {
                 pk.to_writer(writer)?;
             }
         }
@@ -170,6 +178,10 @@ impl fmt::Debug for PublicParams {
                 .finish(),
             PublicParams::Picnic { pk } => f
                 .debug_struct("PublicParams::Picnic")
+                .field("pk", pk)
+                .finish(),
+            PublicParams::Kyber { pk } => f
+                .debug_struct("PublicParams::Kyber")
                 .field("pk", pk)
                 .finish(),
         }

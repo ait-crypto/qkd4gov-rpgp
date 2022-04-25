@@ -100,6 +100,12 @@ named!(picnic<PublicParams>, do_parse!(
      >> (PublicParams::Picnic { pk })
 ));
 
+#[rustfmt::skip]
+named!(kyber<PublicParams>, do_parse!(
+        pk: map!(mpi, to_owned)
+    >> (PublicParams::Kyber { pk })
+));
+
 // Parse the fields of a public key.
 named_args!(pub parse_pub_fields(typ: PublicKeyAlgorithm) <PublicParams>, switch!(
     value!(typ),
@@ -113,7 +119,8 @@ named_args!(pub parse_pub_fields(typ: PublicKeyAlgorithm) <PublicParams>, switch
     PublicKeyAlgorithm::ElgamalSign => call!(elgamal) |
     PublicKeyAlgorithm::EdDSA       => call!(eddsa) |
     // &PublicKeyAlgorithm::DiffieHellman =>
-    PublicKeyAlgorithm::Picnic => call!(picnic)
+    PublicKeyAlgorithm::Picnic => call!(picnic) |
+    PublicKeyAlgorithm::Kyber => call!(kyber)
 ));
 
 named_args!(new_public_key_parser<'a>(key_ver: &'a KeyVersion) <(KeyVersion, PublicKeyAlgorithm, DateTime<Utc>, Option<u16>, PublicParams)>, do_parse!(

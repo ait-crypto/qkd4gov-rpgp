@@ -5,7 +5,7 @@ use num_traits::FromPrimitive;
 
 use crate::composed::message::types::{Edata, Message};
 use crate::composed::shared::Deserializable;
-use crate::crypto::{checksum, ecdh, rsa, SymmetricKeyAlgorithm};
+use crate::crypto::{checksum, ecdh, kyber, rsa, SymmetricKeyAlgorithm};
 use crate::errors::Result;
 use crate::packet::SymKeyEncryptedSessionKey;
 use crate::types::{KeyTrait, Mpi, SecretKeyRepr, SecretKeyTrait, Tag};
@@ -34,6 +34,9 @@ where
             }
             SecretKeyRepr::EdDSA(_) => unimplemented_err!("EdDSA"),
             SecretKeyRepr::Picnic(_) => bail!("Picnic is only used for signing"),
+            SecretKeyRepr::Kyber(ref priv_key) => {
+                kyber::decrypt(priv_key, mpis, &locked_key.fingerprint())?
+            }
         };
         let algorithm = SymmetricKeyAlgorithm::from_u8(decrypted_key[0])
             .ok_or_else(|| format_err!("invalid symmetric key algorithm"))?;

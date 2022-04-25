@@ -17,6 +17,7 @@ pub enum SecretKeyRepr {
     ECDH(ECDHSecretKey),
     EdDSA(EdDSASecretKey),
     Picnic(PicnicSecretKey),
+    Kyber(KyberSecretKey),
 }
 
 /// Secret key for ECDH with Curve25519, the only combination we currently support.
@@ -83,6 +84,22 @@ pub struct PicnicSecretKey {
 impl fmt::Debug for PicnicSecretKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("PicnicSecretKey")
+            .field("secret", &"[..]".to_string())
+            .finish()
+    }
+}
+
+/// Secret key for Kyber
+#[derive(Clone, PartialEq, Eq, Zeroize)]
+#[zeroize(drop)]
+pub struct KyberSecretKey {
+    /// The secret key.
+    pub(crate) secret: Vec<u8>,
+}
+
+impl fmt::Debug for KyberSecretKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("KyberSecretKey")
             .field("secret", &"[..]".to_string())
             .finish()
     }
