@@ -84,7 +84,7 @@ pub struct PicnicSecretKey {
 impl fmt::Debug for PicnicSecretKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("PicnicSecretKey")
-            .field("secret", &"[..]".to_string())
+            .field("secret", &"[..]")
             .finish()
     }
 }
@@ -100,7 +100,7 @@ pub struct KyberSecretKey {
 impl fmt::Debug for KyberSecretKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("KyberSecretKey")
-            .field("secret", &"[..]".to_string())
+            .field("secret", &"[..]")
             .finish()
     }
 }
