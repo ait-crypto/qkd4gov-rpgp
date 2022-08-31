@@ -34,6 +34,7 @@ where
             }
             SecretKeyRepr::EdDSA(_) => unimplemented_err!("EdDSA"),
             SecretKeyRepr::Picnic(_) => bail!("Picnic is only used for signing"),
+            SecretKeyRepr::Dilithium(_) => bail!("Dilithium is only used for signing"),
             SecretKeyRepr::Kyber(ref priv_key) => {
                 kyber::decrypt(priv_key, mpis, &locked_key.fingerprint())?
             }

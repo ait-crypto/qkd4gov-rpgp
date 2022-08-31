@@ -12,12 +12,8 @@ use picnic_bindings::{
 use crate::errors::{Error, Result};
 use crate::types::{Mpi, PicnicSecretKey, PlainSecretParams, PublicParams};
 
-use super::pq_helpers::{as_mpi, from_mpis};
+use super::pq_helpers::{as_mpi, from_mpis, MARKER, MAX_SIZE};
 
-/// This marker is used to prevent [Mpi] from stripping leading zero bits.
-const MARKER: u8 = 0xff;
-/// Maximum number of bytes to encode per [Mpi] value.
-const MAX_SIZE: usize = crate::types::MAX_EXTERN_MPI_BITS as usize / 8 - 1;
 /// Number of [Mpi] values required to represent a signature.
 pub(crate) const NUM_MPIS: usize =
     (picnic_bindings::PicnicL5FS::MAX_SIGNATURE_SIZE + MAX_SIZE - 1) / MAX_SIZE;

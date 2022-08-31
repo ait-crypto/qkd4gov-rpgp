@@ -1,5 +1,6 @@
 use std::{fmt, io};
 
+use crate::crypto::dilithium::DilithiumPublicKey;
 use crate::crypto::ecc_curve::ECCCurve;
 use crate::crypto::hash::HashAlgorithm;
 use crate::crypto::sym::SymmetricKeyAlgorithm;
@@ -46,6 +47,9 @@ pub enum PublicParams {
         pk: Mpi,
         // hash: HashAlgorithm,
         // alg_sym: SymmetricKeyAlgorithm,
+    },
+    Dilithium {
+        pk: DilithiumPublicKey,
     },
 }
 
@@ -117,6 +121,9 @@ impl Serialize for PublicParams {
             PublicParams::Kyber { ref pk } => {
                 pk.to_writer(writer)?;
             }
+            PublicParams::Dilithium { ref pk } => {
+                writer.write_all(pk.as_ref())?;
+            }
         }
 
         Ok(())
@@ -183,6 +190,10 @@ impl fmt::Debug for PublicParams {
             PublicParams::Kyber { pk } => f
                 .debug_struct("PublicParams::Kyber")
                 .field("pk", pk)
+                .finish(),
+            PublicParams::Dilithium { pk } => f
+                .debug_struct("PublicParams::Dilithium")
+                .field("pk", &pk.as_ref())
                 .finish(),
         }
     }

@@ -8,9 +8,9 @@ use smallvec::SmallVec;
 
 use crate::crypto::aead::AeadAlgorithm;
 use crate::crypto::hash::HashAlgorithm;
-use crate::crypto::picnic;
 use crate::crypto::public_key::PublicKeyAlgorithm;
 use crate::crypto::sym::SymmetricKeyAlgorithm;
+use crate::crypto::{dilithium, picnic};
 use crate::de::Deserialize;
 use crate::errors::Result;
 use crate::packet::signature::types::*;
@@ -337,6 +337,7 @@ named_args!(actual_signature<'a>(typ: &PublicKeyAlgorithm) <&'a [u8], Vec<Mpi>>,
     &PublicKeyAlgorithm::Private109 |
     &PublicKeyAlgorithm::Private110  => map!(call!(mpi), |v| vec![v.to_owned()]) |
     &PublicKeyAlgorithm::Picnic => fold_many_m_n!(picnic::NUM_MPIS, picnic::NUM_MPIS, mpi, Vec::new(), |mut acc: Vec<Mpi>, item: MpiRef<'_> | { acc.push(item.to_owned()); acc})  |
+    &PublicKeyAlgorithm::Dilithium => fold_many_m_n!(dilithium::NUM_MPIS, dilithium::NUM_MPIS, mpi, Vec::new(), |mut acc: Vec<Mpi>, item: MpiRef<'_> | { acc.push(item.to_owned()); acc})  |
     _ => map!(call!(mpi), |v| vec![v.to_owned()])
 ));
 

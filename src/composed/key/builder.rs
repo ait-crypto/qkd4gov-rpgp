@@ -6,11 +6,12 @@ use smallvec::SmallVec;
 
 use crate::composed::{KeyDetails, SecretKey, SecretSubkey};
 use crate::crypto::{
-    ecdh, eddsa, kyber, picnic, rsa, HashAlgorithm, PublicKeyAlgorithm, SymmetricKeyAlgorithm,
+    dilithium, ecdh, eddsa, kyber, picnic, rsa, HashAlgorithm, PublicKeyAlgorithm,
+    SymmetricKeyAlgorithm,
 };
 use crate::errors::Result;
 use crate::packet::{self, KeyFlags, UserAttribute, UserId};
-use crate::types::{self, CompressionAlgorithm, PublicParams, RevocationKey};
+use crate::types::{self, CompressionAlgorithm, PlainSecretParams, PublicParams, RevocationKey};
 
 #[derive(Debug, PartialEq, Eq, Builder)]
 #[builder(build_fn(validate = "Self::validate"))]
@@ -223,6 +224,8 @@ pub enum KeyType {
     Picnic,
     /// Encrpyting with Kyber
     Kyber,
+    /// Signing with Dilithium
+    Dilithium,
 }
 
 impl KeyType {
@@ -233,6 +236,7 @@ impl KeyType {
             KeyType::EdDSA => PublicKeyAlgorithm::EdDSA,
             KeyType::Picnic => PublicKeyAlgorithm::Picnic,
             KeyType::Kyber => PublicKeyAlgorithm::Kyber,
+            KeyType::Dilithium => PublicKeyAlgorithm::Dilithium,
         }
     }
 
@@ -255,6 +259,13 @@ impl KeyType {
             KeyType::EdDSA => eddsa::generate_key(rng),
             KeyType::Picnic => picnic::generate_key(),
             KeyType::Kyber => kyber::generate_key(),
+            KeyType::Dilithium => {
+                let (pk, sk) = dilithium::generate_key();
+                (
+                    PublicParams::Dilithium { pk },
+                    PlainSecretParams::Dilithium(sk),
+                )
+            }
         };
 
         let secret = match passphrase {
@@ -567,6 +578,85 @@ mod tests {
             .expect("failed to serialize public key");
 
         std::fs::write("sample-picnic.pub.asc", &armor).unwrap();
+
+        let (signed_key2, _headers) =
+            SignedPublicKey::from_string(&armor).expect("failed to parse public key");
+        signed_key2.verify().expect("invalid public key");
+    }
+
+    #[test]
+    fn key_gen_kyber_dilithium_short() {
+        let rng = &mut ChaCha8Rng::seed_from_u64(0);
+        for _ in 0..10 {
+            gen_kyber_dilithium(rng);
+        }
+    }
+
+    fn gen_kyber_dilithium<R: Rng + CryptoRng>(rng: &mut R) {
+        let _ = pretty_env_logger::try_init();
+
+        let key_params = SecretKeyParamsBuilder::default()
+            .key_type(KeyType::Dilithium)
+            .can_create_certificates(true)
+            .can_sign(true)
+            .primary_user_id("Me-X <me-picnic@mail.com>".into())
+            .passphrase(None)
+            .preferred_symmetric_algorithms(smallvec![
+                SymmetricKeyAlgorithm::AES256,
+                SymmetricKeyAlgorithm::AES192,
+                SymmetricKeyAlgorithm::AES128,
+            ])
+            .preferred_hash_algorithms(smallvec![
+                HashAlgorithm::SHA2_256,
+                HashAlgorithm::SHA2_384,
+                HashAlgorithm::SHA2_512,
+                HashAlgorithm::SHA2_224,
+            ])
+            .preferred_compression_algorithms(smallvec![
+                CompressionAlgorithm::ZLIB,
+                CompressionAlgorithm::ZIP,
+            ])
+            .subkey(
+                SubkeyParamsBuilder::default()
+                    .key_type(KeyType::Kyber)
+                    .can_encrypt(true)
+                    .passphrase(None)
+                    .build()
+                    .expect("failed to build subkey params builder"),
+            )
+            .build()
+            .expect("failed to build secret key builder");
+
+        let key = key_params
+            .generate_with_rng(rng)
+            .expect("failed to generate secret key");
+
+        let signed_key = key.sign(|| "".into()).expect("failed to sign key");
+        let armor = signed_key
+            .to_armored_string(None)
+            .expect("failed to serialize key");
+
+        std::fs::write("sample-dilithium.sec.asc", &armor).expect("failed to write key");
+
+        let (signed_key2, _headers) =
+            SignedSecretKey::from_string(&armor).expect("failed to parse key");
+        signed_key2.verify().expect("invalid key");
+
+        assert_eq!(signed_key, signed_key2);
+
+        let public_key = signed_key.public_key();
+
+        let public_signed_key = public_key
+            .sign(&signed_key, || "".into())
+            .expect("failed to sign public key");
+
+        public_signed_key.verify().expect("invalid public key");
+
+        let armor = public_signed_key
+            .to_armored_string(None)
+            .expect("failed to serialize public key");
+
+        std::fs::write("sample-dilithium.pub.asc", &armor).expect("failed to write key");
 
         let (signed_key2, _headers) =
             SignedPublicKey::from_string(&armor).expect("failed to parse public key");

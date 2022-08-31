@@ -3,6 +3,7 @@
 pub mod aead;
 pub mod aes_kw;
 pub mod checksum;
+pub mod dilithium;
 pub mod ecc_curve;
 pub mod ecdh;
 pub mod eddsa;

@@ -4,7 +4,7 @@ use crate::{
 };
 
 /// This marker is used to prevent [Mpi] from stripping leading zero bits.
-const MARKER: u8 = 0xff;
+pub const MARKER: u8 = 0xff;
 /// Maximum number of bytes to encode per [Mpi] value.
 pub const MAX_SIZE: usize = crate::types::MAX_EXTERN_MPI_BITS as usize / 8 - 1;
 

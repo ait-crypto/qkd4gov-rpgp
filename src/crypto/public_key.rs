@@ -38,4 +38,6 @@ pub enum PublicKeyAlgorithm {
     Picnic = 111,
     // TODO: get a real number assigned
     Kyber = 112,
+    // TODO: get a real number assigned
+    Dilithium = 113,
 }

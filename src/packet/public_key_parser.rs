@@ -3,7 +3,7 @@ use nom::{be_u16, be_u32, be_u8};
 use num_traits::FromPrimitive;
 
 use crate::crypto::ecc_curve::ecc_curve_from_oid;
-use crate::crypto::{HashAlgorithm, PublicKeyAlgorithm, SymmetricKeyAlgorithm};
+use crate::crypto::{dilithium, HashAlgorithm, PublicKeyAlgorithm, SymmetricKeyAlgorithm};
 use crate::types::{mpi, KeyVersion, Mpi, MpiRef, PublicParams};
 
 #[inline]
@@ -106,6 +106,12 @@ named!(kyber<PublicParams>, do_parse!(
     >> (PublicParams::Kyber { pk })
 ));
 
+#[rustfmt::skip]
+named!(dilithium<PublicParams>, do_parse!(
+        bytes: take!(dilithium::PUBLIC_KEY_SIZE)
+    >> (PublicParams::Dilithium{ pk: dilithium::DilithiumPublicKey::try_from(bytes)?  } )
+));
+
 // Parse the fields of a public key.
 named_args!(pub parse_pub_fields(typ: PublicKeyAlgorithm) <PublicParams>, switch!(
     value!(typ),
@@ -120,7 +126,8 @@ named_args!(pub parse_pub_fields(typ: PublicKeyAlgorithm) <PublicParams>, switch
     PublicKeyAlgorithm::EdDSA       => call!(eddsa) |
     // &PublicKeyAlgorithm::DiffieHellman =>
     PublicKeyAlgorithm::Picnic => call!(picnic) |
-    PublicKeyAlgorithm::Kyber => call!(kyber)
+    PublicKeyAlgorithm::Kyber => call!(kyber) |
+    PublicKeyAlgorithm::Dilithium => call!(dilithium)
 ));
 
 named_args!(new_public_key_parser<'a>(key_ver: &'a KeyVersion) <(KeyVersion, PublicKeyAlgorithm, DateTime<Utc>, Option<u16>, PublicParams)>, do_parse!(

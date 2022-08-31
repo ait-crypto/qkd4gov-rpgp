@@ -4,6 +4,7 @@ use num_bigint::BigUint;
 use rsa::RsaPrivateKey;
 use zeroize::Zeroize;
 
+use crate::crypto::dilithium::DilithiumSecretKey;
 use crate::crypto::hash::HashAlgorithm;
 use crate::crypto::sym::SymmetricKeyAlgorithm;
 
@@ -18,6 +19,7 @@ pub enum SecretKeyRepr {
     EdDSA(EdDSASecretKey),
     Picnic(PicnicSecretKey),
     Kyber(KyberSecretKey),
+    Dilithium(DilithiumSecretKey),
 }
 
 /// Secret key for ECDH with Curve25519, the only combination we currently support.

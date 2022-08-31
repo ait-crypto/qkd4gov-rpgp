@@ -6,6 +6,7 @@ use rand::{CryptoRng, Rng};
 use rsa::RsaPrivateKey;
 use zeroize::Zeroize;
 
+use crate::crypto::dilithium::{self, DilithiumSecretKey};
 use crate::crypto::{checksum, ECCCurve, PublicKeyAlgorithm, SymmetricKeyAlgorithm};
 use crate::errors::Result;
 use crate::ser::Serialize;
@@ -23,6 +24,7 @@ pub enum PlainSecretParams {
     EdDSA(Mpi),
     Picnic(Mpi),
     Kyber(Mpi),
+    Dilithium(DilithiumSecretKey),
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -40,6 +42,7 @@ pub enum PlainSecretParamsRef<'a> {
     EdDSA(MpiRef<'a>),
     Picnic(MpiRef<'a>),
     Kyber(MpiRef<'a>),
+    Dilithium(&'a [u8]),
 }
 
 impl<'a> PlainSecretParamsRef<'a> {
@@ -64,6 +67,9 @@ impl<'a> PlainSecretParamsRef<'a> {
             PlainSecretParamsRef::EdDSA(v) => PlainSecretParams::EdDSA((*v).to_owned()),
             PlainSecretParamsRef::Picnic(v) => PlainSecretParams::Picnic((*v).to_owned()),
             PlainSecretParamsRef::Kyber(v) => PlainSecretParams::Kyber(v.to_owned()),
+            PlainSecretParamsRef::Dilithium(v) => {
+                PlainSecretParams::Dilithium(DilithiumSecretKey::try_from(*v).unwrap())
+            }
         }
     }
 
@@ -99,6 +105,9 @@ impl<'a> PlainSecretParamsRef<'a> {
             }
             PlainSecretParamsRef::Kyber(sk) => {
                 sk.to_writer(writer)?;
+            }
+            PlainSecretParamsRef::Dilithium(sk) => {
+                writer.write_all(sk.as_ref())?;
             }
         }
 
@@ -203,6 +212,9 @@ impl<'a> PlainSecretParamsRef<'a> {
             PlainSecretParamsRef::Kyber(sk) => Ok(SecretKeyRepr::Kyber(KyberSecretKey {
                 secret: sk.as_bytes().to_vec(),
             })),
+            PlainSecretParamsRef::Dilithium(sk) => Ok(SecretKeyRepr::Dilithium(
+                DilithiumSecretKey::try_from(*sk).unwrap(),
+            )),
         }
     }
 }
@@ -240,6 +252,7 @@ impl PlainSecretParams {
             PlainSecretParams::EdDSA(v) => PlainSecretParamsRef::EdDSA(v.as_ref()),
             PlainSecretParams::Picnic(v) => PlainSecretParamsRef::Picnic(v.as_ref()),
             PlainSecretParams::Kyber(v) => PlainSecretParamsRef::Kyber(v.as_ref()),
+            PlainSecretParams::Dilithium(v) => PlainSecretParamsRef::Dilithium(v.as_ref()),
         }
     }
 
@@ -319,6 +332,7 @@ impl<'a> fmt::Debug for PlainSecretParamsRef<'a> {
             PlainSecretParamsRef::EdDSA(_) => write!(f, "PlainSecretParams(EdDSA)"),
             PlainSecretParamsRef::Picnic(_) => write!(f, "PlainSecretParams(Picnic)"),
             PlainSecretParamsRef::Kyber(_) => write!(f, "PlainSecretParams(Kyber)"),
+            PlainSecretParamsRef::Dilithium(_) => write!(f, "PlainSecretParams(Dilithium)"),
         }
     }
 }
@@ -334,7 +348,8 @@ named_args!(parse_secret_params(alg: PublicKeyAlgorithm) <PlainSecretParamsRef<'
     PublicKeyAlgorithm::ECDSA   => do_parse!(x: mpi >> (PlainSecretParamsRef::ECDSA(x))) |
     PublicKeyAlgorithm::EdDSA   => do_parse!(x: mpi >> (PlainSecretParamsRef::EdDSA(x))) |
     PublicKeyAlgorithm::Picnic  => do_parse!(x: mpi >> (PlainSecretParamsRef::Picnic(x))) |
-    PublicKeyAlgorithm::Kyber   => do_parse!(x: mpi >> (PlainSecretParamsRef::Kyber(x)))
+    PublicKeyAlgorithm::Kyber   => do_parse!(x: mpi >> (PlainSecretParamsRef::Kyber(x))) |
+    PublicKeyAlgorithm::Dilithium   => call!(dilithium_secret_params)
 ));
 
 // Parse the decrpyted private params of an RSA private key.
@@ -345,4 +360,10 @@ named!(rsa_secret_params<PlainSecretParamsRef<'_>>, do_parse!(
     >> q: mpi
     >> u: mpi
     >> (PlainSecretParamsRef::RSA { d, p, q, u })
+));
+
+#[rustfmt::skip]
+named!(dilithium_secret_params<PlainSecretParamsRef<'_>>, do_parse!(
+       bytes: take!(dilithium::SECRET_KEY_SIZE)
+    >> (PlainSecretParamsRef::Dilithium ( bytes ))
 ));
