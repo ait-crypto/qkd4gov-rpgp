@@ -109,7 +109,7 @@ named!(kyber<PublicParams>, do_parse!(
 #[rustfmt::skip]
 named!(dilithium<PublicParams>, do_parse!(
         bytes: take!(dilithium::PUBLIC_KEY_SIZE)
-    >> (PublicParams::Dilithium{ pk: dilithium::DilithiumPublicKey::try_from(bytes)?  } )
+    >> (PublicParams::Dilithium{ pk: Box::new(dilithium::DilithiumPublicKey::try_from(bytes)?)  } )
 ));
 
 // Parse the fields of a public key.

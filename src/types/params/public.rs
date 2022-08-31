@@ -50,7 +50,7 @@ pub enum PublicParams {
         // alg_sym: SymmetricKeyAlgorithm,
     },
     Dilithium {
-        pk: DilithiumPublicKey,
+        pk: Box<DilithiumPublicKey>,
     },
 }
 
@@ -123,7 +123,7 @@ impl Serialize for PublicParams {
                 pk.to_writer(writer)?;
             }
             PublicParams::Dilithium { ref pk } => {
-                writer.write_all(pk.as_ref())?;
+                writer.write_all(pk.as_ref().as_ref())?;
             }
         }
 
@@ -194,7 +194,7 @@ impl fmt::Debug for PublicParams {
                 .finish(),
             PublicParams::Dilithium { pk } => f
                 .debug_struct("PublicParams::Dilithium")
-                .field("pk", &pk.as_ref())
+                .field("pk", &pk.as_ref().as_ref())
                 .finish(),
         }
     }

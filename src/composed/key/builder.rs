@@ -265,7 +265,7 @@ impl KeyType {
             KeyType::Dilithium => {
                 let (pk, sk) = dilithium::generate_key();
                 (
-                    PublicParams::Dilithium { pk },
+                    PublicParams::Dilithium { pk: Box::new(pk) },
                     PlainSecretParams::Dilithium(sk),
                 )
             }
