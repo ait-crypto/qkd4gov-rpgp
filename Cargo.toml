@@ -101,9 +101,8 @@ serde_json = "^1.0"
 
 [features]
 default = []
-nightly = ["ed25519-dalek/nightly", "rsa/nightly", "rand/nightly", "num-bigint/nightly"]
 profile = ["gperftools"]
-asm = ["sha1/asm", "sha2/asm", "md-5/asm", "nightly"]
+asm = ["sha1/asm", "sha2/asm", "md-5/asm"]
 wasm = ["chrono/wasmbind", "getrandom", "getrandom/js"]
 
 [profile.bench]
