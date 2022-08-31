@@ -57,8 +57,8 @@ picnic-bindings = { version = "0.5", default-features = false, features = [
     "static-fallback",
     "std",
 ] }
-pqcrypto-kyber = { version = "0.7", features = ["serialization"] }
-pqcrypto-dilithium = { version = "0.4", features = ["serialization"] }
+pqcrypto-kyber = { version = "0.7", default-features = false }
+pqcrypto-dilithium = { version = "0.4", default-features = false }
 pqcrypto-traits = "0.3"
 
 [dependencies.buf_redux]
