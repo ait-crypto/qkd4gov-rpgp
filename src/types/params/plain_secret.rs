@@ -7,7 +7,9 @@ use rsa::RsaPrivateKey;
 use zeroize::Zeroize;
 
 use crate::crypto::dilithium::{self, DilithiumSecretKey};
-use crate::crypto::{checksum, ECCCurve, PublicKeyAlgorithm, SymmetricKeyAlgorithm};
+use crate::crypto::{
+    checksum, picnic, ECCCurve, PicnicSecretKey, PublicKeyAlgorithm, SymmetricKeyAlgorithm,
+};
 use crate::errors::Result;
 use crate::ser::Serialize;
 use crate::types::*;
@@ -22,7 +24,7 @@ pub enum PlainSecretParams {
     ECDH(Mpi),
     Elgamal(Mpi),
     EdDSA(Mpi),
-    Picnic(Mpi),
+    Picnic(PicnicSecretKey),
     Kyber(Mpi),
     Dilithium(DilithiumSecretKey),
 }
@@ -40,7 +42,7 @@ pub enum PlainSecretParamsRef<'a> {
     ECDH(MpiRef<'a>),
     Elgamal(MpiRef<'a>),
     EdDSA(MpiRef<'a>),
-    Picnic(MpiRef<'a>),
+    Picnic(&'a [u8]),
     Kyber(MpiRef<'a>),
     Dilithium(&'a [u8]),
 }
@@ -65,7 +67,9 @@ impl<'a> PlainSecretParamsRef<'a> {
             PlainSecretParamsRef::ECDH(v) => PlainSecretParams::ECDH((*v).to_owned()),
             PlainSecretParamsRef::Elgamal(v) => PlainSecretParams::Elgamal((*v).to_owned()),
             PlainSecretParamsRef::EdDSA(v) => PlainSecretParams::EdDSA((*v).to_owned()),
-            PlainSecretParamsRef::Picnic(v) => PlainSecretParams::Picnic((*v).to_owned()),
+            PlainSecretParamsRef::Picnic(v) => {
+                PlainSecretParams::Picnic(PicnicSecretKey::try_from(*v).unwrap())
+            }
             PlainSecretParamsRef::Kyber(v) => PlainSecretParams::Kyber(v.to_owned()),
             PlainSecretParamsRef::Dilithium(v) => {
                 PlainSecretParams::Dilithium(DilithiumSecretKey::try_from(*v).unwrap())
@@ -101,13 +105,13 @@ impl<'a> PlainSecretParamsRef<'a> {
                 (*x).to_writer(writer)?;
             }
             PlainSecretParamsRef::Picnic(sk) => {
-                sk.to_writer(writer)?;
+                writer.write_all(sk)?;
             }
             PlainSecretParamsRef::Kyber(sk) => {
                 sk.to_writer(writer)?;
             }
             PlainSecretParamsRef::Dilithium(sk) => {
-                writer.write_all(sk.as_ref())?;
+                writer.write_all(sk)?;
             }
         }
 
@@ -206,9 +210,9 @@ impl<'a> PlainSecretParamsRef<'a> {
             PlainSecretParamsRef::ECDSA(_) => {
                 unimplemented_err!("ECDSA");
             }
-            PlainSecretParamsRef::Picnic(sk) => Ok(SecretKeyRepr::Picnic(PicnicSecretKey {
-                secret: sk.as_bytes().to_vec(),
-            })),
+            PlainSecretParamsRef::Picnic(sk) => Ok(SecretKeyRepr::Picnic(
+                PicnicSecretKey::try_from(*sk).unwrap(),
+            )),
             PlainSecretParamsRef::Kyber(sk) => Ok(SecretKeyRepr::Kyber(KyberSecretKey {
                 secret: sk.as_bytes().to_vec(),
             })),
@@ -347,7 +351,7 @@ named_args!(parse_secret_params(alg: PublicKeyAlgorithm) <PlainSecretParamsRef<'
     PublicKeyAlgorithm::ECDH    => do_parse!(x: mpi >> (PlainSecretParamsRef::ECDH(x)))  |
     PublicKeyAlgorithm::ECDSA   => do_parse!(x: mpi >> (PlainSecretParamsRef::ECDSA(x))) |
     PublicKeyAlgorithm::EdDSA   => do_parse!(x: mpi >> (PlainSecretParamsRef::EdDSA(x))) |
-    PublicKeyAlgorithm::Picnic  => do_parse!(x: mpi >> (PlainSecretParamsRef::Picnic(x))) |
+    PublicKeyAlgorithm::Picnic  => call!(picnic_secret_params) |
     PublicKeyAlgorithm::Kyber   => do_parse!(x: mpi >> (PlainSecretParamsRef::Kyber(x))) |
     PublicKeyAlgorithm::Dilithium   => call!(dilithium_secret_params)
 ));
@@ -366,4 +370,10 @@ named!(rsa_secret_params<PlainSecretParamsRef<'_>>, do_parse!(
 named!(dilithium_secret_params<PlainSecretParamsRef<'_>>, do_parse!(
        bytes: take!(dilithium::SECRET_KEY_SIZE)
     >> (PlainSecretParamsRef::Dilithium ( bytes ))
+));
+
+#[rustfmt::skip]
+named!(picnic_secret_params<PlainSecretParamsRef<'_>>, do_parse!(
+       bytes: take!(picnic::SECRET_KEY_SIZE)
+    >> (PlainSecretParamsRef::Picnic ( bytes ))
 ));

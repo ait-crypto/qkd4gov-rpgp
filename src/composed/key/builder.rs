@@ -257,7 +257,10 @@ impl KeyType {
             KeyType::Rsa(bit_size) => rsa::generate_key(rng, bit_size as usize)?,
             KeyType::ECDH => ecdh::generate_key(rng),
             KeyType::EdDSA => eddsa::generate_key(rng),
-            KeyType::Picnic => picnic::generate_key(),
+            KeyType::Picnic => {
+                let (pk, sk) = picnic::generate_key();
+                (PublicParams::Picnic { pk }, PlainSecretParams::Picnic(sk))
+            }
             KeyType::Kyber => kyber::generate_key(),
             KeyType::Dilithium => {
                 let (pk, sk) = dilithium::generate_key();

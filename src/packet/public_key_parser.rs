@@ -3,7 +3,7 @@ use nom::{be_u16, be_u32, be_u8};
 use num_traits::FromPrimitive;
 
 use crate::crypto::ecc_curve::ecc_curve_from_oid;
-use crate::crypto::{dilithium, HashAlgorithm, PublicKeyAlgorithm, SymmetricKeyAlgorithm};
+use crate::crypto::{dilithium, picnic, HashAlgorithm, PublicKeyAlgorithm, SymmetricKeyAlgorithm};
 use crate::types::{mpi, KeyVersion, Mpi, MpiRef, PublicParams};
 
 #[inline]
@@ -96,8 +96,8 @@ named!(rsa<PublicParams>, do_parse!(
 
 #[rustfmt::skip]
 named!(picnic<PublicParams>, do_parse!(
-        pk: map!(mpi, to_owned)
-     >> (PublicParams::Picnic { pk })
+        bytes: take!(picnic::PUBLIC_KEY_SIZE)
+     >> (PublicParams::Picnic { pk: picnic::PicnicPublicKey::try_from(bytes).unwrap() /* FIXME: unwrap */ })
 ));
 
 #[rustfmt::skip]

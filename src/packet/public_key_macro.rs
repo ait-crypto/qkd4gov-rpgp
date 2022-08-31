@@ -286,7 +286,7 @@ macro_rules! impl_public_key {
                         unimplemented_err!("verify DSA");
                     }
                     PublicParams::Picnic { ref pk } => {
-                        $crate::crypto::picnic::verify(pk.as_bytes(), hashed, sig)
+                        $crate::crypto::picnic::verify(pk, hashed, sig)
                     }
                     PublicParams::Dilithium { ref pk } => {
                         $crate::crypto::dilithium::verify(pk, hashed, sig)

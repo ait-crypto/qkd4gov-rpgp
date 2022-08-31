@@ -6,6 +6,7 @@ use zeroize::Zeroize;
 
 use crate::crypto::dilithium::DilithiumSecretKey;
 use crate::crypto::hash::HashAlgorithm;
+use crate::crypto::picnic::PicnicSecretKey;
 use crate::crypto::sym::SymmetricKeyAlgorithm;
 
 /// The version of the secret key that is actually exposed to users to do crypto operations.
@@ -72,22 +73,6 @@ pub struct DSASecretKey {
 impl fmt::Debug for DSASecretKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("DSASecretKey").field("x", &"[..]").finish()
-    }
-}
-
-/// Secret key for Picnic
-#[derive(Clone, PartialEq, Eq, Zeroize)]
-#[zeroize(drop)]
-pub struct PicnicSecretKey {
-    /// The secret key.
-    pub(crate) secret: Vec<u8>,
-}
-
-impl fmt::Debug for PicnicSecretKey {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("PicnicSecretKey")
-            .field("secret", &"[..]")
-            .finish()
     }
 }
 
