@@ -1,4 +1,5 @@
 use block_padding::{Padding, Pkcs7};
+use digest::Digest;
 
 use crate::crypto::pq_helpers::{as_mpi, from_mpi, strip_marker};
 use crate::crypto::{aes_kw, HashAlgorithm, PublicKeyAlgorithm, SymmetricKeyAlgorithm};
@@ -54,61 +55,40 @@ pub fn decrypt(priv_key: &KyberSecretKey, mpis: &[Mpi], fingerprint: &[u8]) -> R
     let shared_secret = decapsulate(&ciphertext, &our_secret);
 
     // Perform key derivation
-    let z = kdf(
-        HASH,
-        shared_secret.as_bytes(),
-        CIPHER.key_size(),
-        CIPHER,
-        fingerprint,
-    )?;
+    let z = kdf(shared_secret.as_bytes(), CIPHER, fingerprint);
 
     // Peform AES Key Unwrap
-    let encrypted_key_len: usize = match mpis[1].first() {
-        Some(l) => *l as usize,
-        None => 0,
-    };
+    let encrypted_key_len: usize = mpis[1].first().copied().unwrap_or(0) as usize;
 
     let mut encrypted_session_key_vec: Vec<u8> = Vec::new();
     encrypted_session_key_vec.resize(encrypted_key_len, 0);
     encrypted_session_key_vec[(encrypted_key_len - encrypted_session_key.len())..]
         .copy_from_slice(encrypted_session_key);
 
-    let decrypted_key_padded = aes_kw::unwrap(&z, &encrypted_session_key_vec)?;
-
     // PKCS5 unpadding (PKCS5 is PKCS7 with a blocksize of 8)
-    let decrypted_key = Pkcs7::unpad(&decrypted_key_padded)?;
-
-    Ok(decrypted_key.to_vec())
+    aes_kw::unwrap(&z, &encrypted_session_key_vec)
+        .and_then(|v| Pkcs7::unpad(&v).map(|v| v.to_vec()).map_err(Into::into))
 }
 
 /// Key Derivation Function for ECDH (as defined in RFC 6637).
 /// https://tools.ietf.org/html/rfc6637#section-7
-fn kdf(
-    hash: HashAlgorithm,
-    shared_secret: &[u8],
-    length: usize,
-    alg_sym: SymmetricKeyAlgorithm,
-    fingerprint: &[u8],
-) -> Result<Vec<u8>> {
-    let mut hasher = hash.new_hasher()?;
+fn kdf(shared_secret: &[u8], alg_sym: SymmetricKeyAlgorithm, fingerprint: &[u8]) -> Vec<u8> {
+    let mut hasher = sha3::Sha3_512::default();
     hasher.update(&[0, 0, 0, 1]);
     hasher.update(shared_secret);
     hasher.update(&[OID.len() as u8]);
     hasher.update(OID);
-    hasher.update(&[PublicKeyAlgorithm::Kyber as u8]);
     hasher.update(&[
+        PublicKeyAlgorithm::Kyber as u8,
         0x03, // length of the following fields
         0x01, // reserved for future extensions
-        hash as u8,
+        HASH as u8,
         alg_sym as u8,
     ]);
     hasher.update(ANON_SENDER);
     hasher.update(fingerprint);
 
-    let mut digest = hasher.finish();
-    digest.truncate(length);
-
-    Ok(digest)
+    hasher.finalize()[..CIPHER.key_size()].to_vec()
 }
 
 /// Kyber encryption.
@@ -124,13 +104,7 @@ pub fn encrypt(pk: &Mpi, fingerprint: &[u8], plain: &[u8]) -> Result<Vec<Vec<u8>
     let (shared_secret, ciphertext) = encapsulate(&their_public);
 
     // Perform key derivation
-    let z = kdf(
-        HASH,
-        shared_secret.as_bytes(),
-        CIPHER.key_size(),
-        CIPHER,
-        fingerprint,
-    )?;
+    let z = kdf(shared_secret.as_bytes(), CIPHER, fingerprint);
 
     // PKCS5 padding (PKCS5 is PKCS7 with a blocksize of 8)
     let len = plain.len();
