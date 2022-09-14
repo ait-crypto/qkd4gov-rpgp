@@ -8,6 +8,7 @@ use crate::crypto::dilithium::DilithiumSecretKey;
 use crate::crypto::hash::HashAlgorithm;
 use crate::crypto::picnic::PicnicSecretKey;
 use crate::crypto::sym::SymmetricKeyAlgorithm;
+use crate::crypto::KyberSecretKey;
 
 /// The version of the secret key that is actually exposed to users to do crypto operations.
 #[allow(clippy::large_enum_variant)] // FIXME
@@ -73,21 +74,5 @@ pub struct DSASecretKey {
 impl fmt::Debug for DSASecretKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("DSASecretKey").field("x", &"[..]").finish()
-    }
-}
-
-/// Secret key for Kyber
-#[derive(Clone, PartialEq, Eq, Zeroize)]
-#[zeroize(drop)]
-pub struct KyberSecretKey {
-    /// The secret key.
-    pub(crate) secret: Vec<u8>,
-}
-
-impl fmt::Debug for KyberSecretKey {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("KyberSecretKey")
-            .field("secret", &"[..]")
-            .finish()
     }
 }

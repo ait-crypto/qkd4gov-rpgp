@@ -1,14 +1,16 @@
+use std::fmt;
+use std::ops::Deref;
+
 use block_padding::{Padding, Pkcs7};
 use digest::Digest;
+use zeroize::Zeroize;
 
-use crate::crypto::pq_helpers::{as_mpi, from_mpi, strip_marker};
+use crate::crypto::pq_helpers::{as_mpi, from_mpi};
 use crate::crypto::{aes_kw, HashAlgorithm, PublicKeyAlgorithm, SymmetricKeyAlgorithm};
 use crate::errors::{Error, Result};
-use crate::types::{KyberSecretKey, Mpi, PlainSecretParams, PublicParams};
+use crate::types::Mpi;
 
-use pqcrypto_kyber::kyber512::{
-    decapsulate, encapsulate, keypair, Ciphertext, PublicKey, SecretKey,
-};
+use pqcrypto_kyber::kyber512;
 use pqcrypto_traits::kem::{
     Ciphertext as CiphertextTrait, PublicKey as PublicKeyTrait, SecretKey as SecretKeyTrait,
     SharedSecret as SharedSecretTrait,
@@ -21,16 +23,110 @@ const OID: &[u8] = b"Kyber OID not yet specified";
 const HASH: HashAlgorithm = HashAlgorithm::SHA3_512;
 const CIPHER: SymmetricKeyAlgorithm = SymmetricKeyAlgorithm::AES256;
 
-/// Generate a Kyber KeyPair.
-pub fn generate_key() -> (PublicParams, PlainSecretParams) {
-    let (pk, sk) = keypair();
+pub const SECRET_KEY_SIZE: usize = kyber512::secret_key_bytes();
+pub const PUBLIC_KEY_SIZE: usize = kyber512::public_key_bytes();
 
-    (
-        PublicParams::Kyber {
-            pk: as_mpi(&pk.as_bytes()),
-        },
-        PlainSecretParams::Kyber(as_mpi(&sk.as_bytes())),
-    )
+#[derive(Clone, PartialEq)]
+#[repr(transparent)]
+pub struct KyberPublicKey {
+    pk: kyber512::PublicKey,
+}
+
+impl Eq for KyberPublicKey {}
+
+impl From<kyber512::PublicKey> for KyberPublicKey {
+    #[inline]
+    fn from(pk: kyber512::PublicKey) -> Self {
+        Self { pk }
+    }
+}
+
+impl Deref for KyberPublicKey {
+    type Target = kyber512::PublicKey;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.pk
+    }
+}
+
+impl AsRef<[u8]> for KyberPublicKey {
+    #[inline]
+    fn as_ref(&self) -> &[u8] {
+        self.pk.as_bytes()
+    }
+}
+
+impl TryFrom<&[u8]> for KyberPublicKey {
+    type Error = Error;
+
+    #[inline]
+    fn try_from(value: &[u8]) -> Result<Self> {
+        kyber512::PublicKey::from_bytes(value)
+            .map(Self::from)
+            .map_err(|_| Error::Message("Dilithium key deserialization failed".to_owned()))
+    }
+}
+
+#[derive(Clone, PartialEq)]
+#[repr(transparent)]
+pub struct KyberSecretKey {
+    sk: kyber512::SecretKey,
+}
+
+impl fmt::Debug for KyberSecretKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("KyberSK").field("sk", &"[..]").finish()
+    }
+}
+
+impl Eq for KyberSecretKey {}
+
+impl Zeroize for KyberSecretKey {
+    fn zeroize(&mut self) {
+        // FIXME
+        // self.sk.zeroize()
+    }
+}
+
+impl From<kyber512::SecretKey> for KyberSecretKey {
+    #[inline]
+    fn from(sk: kyber512::SecretKey) -> Self {
+        Self { sk }
+    }
+}
+
+impl Deref for KyberSecretKey {
+    type Target = kyber512::SecretKey;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.sk
+    }
+}
+
+impl AsRef<[u8]> for KyberSecretKey {
+    #[inline]
+    fn as_ref(&self) -> &[u8] {
+        self.sk.as_bytes()
+    }
+}
+
+impl TryFrom<&[u8]> for KyberSecretKey {
+    type Error = Error;
+
+    #[inline]
+    fn try_from(value: &[u8]) -> Result<Self> {
+        kyber512::SecretKey::from_bytes(value)
+            .map(Self::from)
+            .map_err(|_| Error::Message("Kyber key deserialization failed".to_owned()))
+    }
+}
+
+/// Generate a Kyber KeyPair.
+pub fn generate_key() -> (KyberPublicKey, KyberSecretKey) {
+    let (pk, sk) = kyber512::keypair();
+    (pk.into(), sk.into())
 }
 
 /// Kyber decryption.
@@ -44,24 +140,20 @@ pub fn decrypt(priv_key: &KyberSecretKey, mpis: &[Mpi], fingerprint: &[u8]) -> R
 
     let ciphertext = {
         let ciphertext = from_mpi(&mpis[0])?;
-        Ciphertext::from_bytes(ciphertext.as_slice())
+        kyber512::Ciphertext::from_bytes(ciphertext.as_slice())
             .map_err(|_| Error::Message("Invalid ciphertext".to_owned()))?
     };
 
-    let our_secret = SecretKey::from_bytes(strip_marker(&priv_key.secret)?)
-        .map_err(|_| Error::Message("Invalid secret key".to_owned()))?;
-
     // derive shared secret
-    let shared_secret = decapsulate(&ciphertext, &our_secret);
+    let shared_secret = kyber512::decapsulate(&ciphertext, priv_key);
 
     // Perform key derivation
-    let z = kdf(shared_secret.as_bytes(), CIPHER, fingerprint);
+    let z = kdf(shared_secret.as_bytes(), fingerprint);
 
     // Peform AES Key Unwrap
     let encrypted_key_len: usize = mpis[1].first().copied().unwrap_or(0) as usize;
 
-    let mut encrypted_session_key_vec: Vec<u8> = Vec::new();
-    encrypted_session_key_vec.resize(encrypted_key_len, 0);
+    let mut encrypted_session_key_vec = vec![0u8; encrypted_key_len];
     encrypted_session_key_vec[(encrypted_key_len - encrypted_session_key.len())..]
         .copy_from_slice(encrypted_session_key);
 
@@ -72,7 +164,7 @@ pub fn decrypt(priv_key: &KyberSecretKey, mpis: &[Mpi], fingerprint: &[u8]) -> R
 
 /// Key Derivation Function for ECDH (as defined in RFC 6637).
 /// https://tools.ietf.org/html/rfc6637#section-7
-fn kdf(shared_secret: &[u8], alg_sym: SymmetricKeyAlgorithm, fingerprint: &[u8]) -> Vec<u8> {
+fn kdf(shared_secret: &[u8], fingerprint: &[u8]) -> Vec<u8> {
     let mut hasher = sha3::Sha3_512::default();
     hasher.update(&[0, 0, 0, 1]);
     hasher.update(shared_secret);
@@ -83,7 +175,7 @@ fn kdf(shared_secret: &[u8], alg_sym: SymmetricKeyAlgorithm, fingerprint: &[u8])
         0x03, // length of the following fields
         0x01, // reserved for future extensions
         HASH as u8,
-        alg_sym as u8,
+        CIPHER as u8,
     ]);
     hasher.update(ANON_SENDER);
     hasher.update(fingerprint);
@@ -92,19 +184,18 @@ fn kdf(shared_secret: &[u8], alg_sym: SymmetricKeyAlgorithm, fingerprint: &[u8])
 }
 
 /// Kyber encryption.
-pub fn encrypt(pk: &Mpi, fingerprint: &[u8], plain: &[u8]) -> Result<Vec<Vec<u8>>> {
+pub fn encrypt(
+    their_public: &KyberPublicKey,
+    fingerprint: &[u8],
+    plain: &[u8],
+) -> Result<Vec<Vec<u8>>> {
     debug!("Kyber encrypt");
 
-    let their_public = {
-        let pk = from_mpi(pk)?;
-        PublicKey::from_bytes(&pk).map_err(|_| Error::Message("Invalid public key".to_owned()))?
-    };
-
     // derive shared secret
-    let (shared_secret, ciphertext) = encapsulate(&their_public);
+    let (shared_secret, ciphertext) = kyber512::encapsulate(their_public);
 
     // Perform key derivation
-    let z = kdf(shared_secret.as_bytes(), CIPHER, fingerprint);
+    let z = kdf(shared_secret.as_bytes(), fingerprint);
 
     // PKCS5 padding (PKCS5 is PKCS7 with a blocksize of 8)
     let len = plain.len();
@@ -130,8 +221,6 @@ mod tests {
     use rand::{RngCore, SeedableRng};
     use rand_chacha::ChaChaRng;
 
-    use crate::types::{PublicParams, SecretKeyRepr};
-
     #[test]
     fn test_encrypt_decrypt() {
         let mut rng = ChaChaRng::from_seed([0u8; 32]);
@@ -142,21 +231,10 @@ mod tests {
 
         let plain = b"hello world";
 
-        let mpis = match pkey {
-            PublicParams::Kyber { ref pk } => {
-                encrypt(pk, &fingerprint, &plain[..]).expect("Unable to encrypt")
-            }
-            _ => panic!("invalid key generated"),
-        };
-
+        let mpis = encrypt(&pkey, &fingerprint, &plain[..]).expect("Unable to encrypt");
         let mpis = mpis.into_iter().map(Into::into).collect::<Vec<Mpi>>();
 
-        let decrypted = match skey.as_ref().as_repr(&pkey).expect("Unable to decrypt") {
-            SecretKeyRepr::Kyber(ref skey) => {
-                decrypt(skey, &mpis, &fingerprint).expect("Unable to decrypt")
-            }
-            _ => panic!("invalid key generated"),
-        };
+        let decrypted = decrypt(&skey, &mpis, &fingerprint).expect("Unable to decrypt");
 
         assert_eq!(&plain[..], &decrypted[..]);
     }

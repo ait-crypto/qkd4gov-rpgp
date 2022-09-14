@@ -261,12 +261,18 @@ impl KeyType {
                 let (pk, sk) = picnic::generate_key();
                 (PublicParams::Picnic { pk }, PlainSecretParams::Picnic(sk))
             }
-            KeyType::Kyber => kyber::generate_key(),
+            KeyType::Kyber => {
+                let (pk, sk) = kyber::generate_key();
+                (
+                    PublicParams::Kyber { pk: Box::new(pk) },
+                    PlainSecretParams::Kyber(Box::new(sk)),
+                )
+            }
             KeyType::Dilithium => {
                 let (pk, sk) = dilithium::generate_key();
                 (
                     PublicParams::Dilithium { pk: Box::new(pk) },
-                    PlainSecretParams::Dilithium(sk),
+                    PlainSecretParams::Dilithium(Box::new(sk)),
                 )
             }
         };

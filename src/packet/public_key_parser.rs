@@ -3,7 +3,10 @@ use nom::{be_u16, be_u32, be_u8};
 use num_traits::FromPrimitive;
 
 use crate::crypto::ecc_curve::ecc_curve_from_oid;
-use crate::crypto::{dilithium, picnic, HashAlgorithm, PublicKeyAlgorithm, SymmetricKeyAlgorithm};
+use crate::crypto::{
+    dilithium, kyber, picnic, HashAlgorithm, PublicKeyAlgorithm, SymmetricKeyAlgorithm,
+};
+use crate::errors::Error;
 use crate::types::{mpi, KeyVersion, Mpi, MpiRef, PublicParams};
 
 #[inline]
@@ -97,13 +100,13 @@ named!(rsa<PublicParams>, do_parse!(
 #[rustfmt::skip]
 named!(picnic<PublicParams>, do_parse!(
         bytes: take!(picnic::PUBLIC_KEY_SIZE)
-     >> (PublicParams::Picnic { pk: picnic::PicnicPublicKey::try_from(bytes).unwrap() /* FIXME: unwrap */ })
+     >> (PublicParams::Picnic { pk: picnic::PicnicPublicKey::try_from(bytes).map_err(|_| Error::Message("Failed to deserialize Picnic public key".into()))? })
 ));
 
 #[rustfmt::skip]
 named!(kyber<PublicParams>, do_parse!(
-        pk: map!(mpi, to_owned)
-    >> (PublicParams::Kyber { pk })
+        bytes: take!(kyber::PUBLIC_KEY_SIZE)
+    >> (PublicParams::Kyber { pk: Box::new(kyber::KyberPublicKey::try_from(bytes)?) })
 ));
 
 #[rustfmt::skip]

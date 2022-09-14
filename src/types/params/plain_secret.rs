@@ -8,7 +8,8 @@ use zeroize::Zeroize;
 
 use crate::crypto::dilithium::{self, DilithiumSecretKey};
 use crate::crypto::{
-    checksum, picnic, ECCCurve, PicnicSecretKey, PublicKeyAlgorithm, SymmetricKeyAlgorithm,
+    checksum, kyber, picnic, ECCCurve, KyberSecretKey, PicnicSecretKey, PublicKeyAlgorithm,
+    SymmetricKeyAlgorithm,
 };
 use crate::errors::Result;
 use crate::ser::Serialize;
@@ -25,8 +26,8 @@ pub enum PlainSecretParams {
     Elgamal(Mpi),
     EdDSA(Mpi),
     Picnic(PicnicSecretKey),
-    Kyber(Mpi),
-    Dilithium(DilithiumSecretKey),
+    Kyber(Box<KyberSecretKey>),
+    Dilithium(Box<DilithiumSecretKey>),
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -43,7 +44,7 @@ pub enum PlainSecretParamsRef<'a> {
     Elgamal(MpiRef<'a>),
     EdDSA(MpiRef<'a>),
     Picnic(&'a [u8]),
-    Kyber(MpiRef<'a>),
+    Kyber(&'a [u8]),
     Dilithium(&'a [u8]),
 }
 
@@ -68,12 +69,14 @@ impl<'a> PlainSecretParamsRef<'a> {
             PlainSecretParamsRef::Elgamal(v) => PlainSecretParams::Elgamal((*v).to_owned()),
             PlainSecretParamsRef::EdDSA(v) => PlainSecretParams::EdDSA((*v).to_owned()),
             PlainSecretParamsRef::Picnic(v) => {
-                PlainSecretParams::Picnic(PicnicSecretKey::try_from(*v).unwrap())
+                PlainSecretParams::Picnic(PicnicSecretKey::try_from(*v).expect("Picnic secret key"))
             }
-            PlainSecretParamsRef::Kyber(v) => PlainSecretParams::Kyber(v.to_owned()),
-            PlainSecretParamsRef::Dilithium(v) => {
-                PlainSecretParams::Dilithium(DilithiumSecretKey::try_from(*v).unwrap())
-            }
+            PlainSecretParamsRef::Kyber(v) => PlainSecretParams::Kyber(Box::new(
+                KyberSecretKey::try_from(*v).expect("Kyber secret key"),
+            )),
+            PlainSecretParamsRef::Dilithium(v) => PlainSecretParams::Dilithium(Box::new(
+                DilithiumSecretKey::try_from(*v).expect("Dilithium secret key"),
+            )),
         }
     }
 
@@ -108,7 +111,7 @@ impl<'a> PlainSecretParamsRef<'a> {
                 writer.write_all(sk)?;
             }
             PlainSecretParamsRef::Kyber(sk) => {
-                sk.to_writer(writer)?;
+                writer.write_all(sk)?;
             }
             PlainSecretParamsRef::Dilithium(sk) => {
                 writer.write_all(sk)?;
@@ -210,15 +213,15 @@ impl<'a> PlainSecretParamsRef<'a> {
             PlainSecretParamsRef::ECDSA(_) => {
                 unimplemented_err!("ECDSA");
             }
-            PlainSecretParamsRef::Picnic(sk) => Ok(SecretKeyRepr::Picnic(
-                PicnicSecretKey::try_from(*sk).unwrap(),
-            )),
-            PlainSecretParamsRef::Kyber(sk) => Ok(SecretKeyRepr::Kyber(KyberSecretKey {
-                secret: sk.as_bytes().to_vec(),
-            })),
-            PlainSecretParamsRef::Dilithium(sk) => Ok(SecretKeyRepr::Dilithium(
-                DilithiumSecretKey::try_from(*sk).unwrap(),
-            )),
+            PlainSecretParamsRef::Picnic(sk) => {
+                Ok(SecretKeyRepr::Picnic(PicnicSecretKey::try_from(*sk)?))
+            }
+            PlainSecretParamsRef::Kyber(sk) => {
+                Ok(SecretKeyRepr::Kyber(KyberSecretKey::try_from(*sk)?))
+            }
+            PlainSecretParamsRef::Dilithium(sk) => {
+                Ok(SecretKeyRepr::Dilithium(DilithiumSecretKey::try_from(*sk)?))
+            }
         }
     }
 }
@@ -255,8 +258,8 @@ impl PlainSecretParams {
             PlainSecretParams::Elgamal(v) => PlainSecretParamsRef::Elgamal(v.as_ref()),
             PlainSecretParams::EdDSA(v) => PlainSecretParamsRef::EdDSA(v.as_ref()),
             PlainSecretParams::Picnic(v) => PlainSecretParamsRef::Picnic(v.as_ref()),
-            PlainSecretParams::Kyber(v) => PlainSecretParamsRef::Kyber(v.as_ref()),
-            PlainSecretParams::Dilithium(v) => PlainSecretParamsRef::Dilithium(v.as_ref()),
+            PlainSecretParams::Kyber(v) => PlainSecretParamsRef::Kyber(v.as_ref().as_ref()),
+            PlainSecretParams::Dilithium(v) => PlainSecretParamsRef::Dilithium(v.as_ref().as_ref()),
         }
     }
 
@@ -352,7 +355,7 @@ named_args!(parse_secret_params(alg: PublicKeyAlgorithm) <PlainSecretParamsRef<'
     PublicKeyAlgorithm::ECDSA   => do_parse!(x: mpi >> (PlainSecretParamsRef::ECDSA(x))) |
     PublicKeyAlgorithm::EdDSA   => do_parse!(x: mpi >> (PlainSecretParamsRef::EdDSA(x))) |
     PublicKeyAlgorithm::Picnic  => call!(picnic_secret_params) |
-    PublicKeyAlgorithm::Kyber   => do_parse!(x: mpi >> (PlainSecretParamsRef::Kyber(x))) |
+    PublicKeyAlgorithm::Kyber   => call!(kyber_secret_params) |
     PublicKeyAlgorithm::Dilithium   => call!(dilithium_secret_params)
 ));
 
@@ -376,4 +379,10 @@ named!(dilithium_secret_params<PlainSecretParamsRef<'_>>, do_parse!(
 named!(picnic_secret_params<PlainSecretParamsRef<'_>>, do_parse!(
        bytes: take!(picnic::SECRET_KEY_SIZE)
     >> (PlainSecretParamsRef::Picnic ( bytes ))
+));
+
+#[rustfmt::skip]
+named!(kyber_secret_params<PlainSecretParamsRef<'_>>, do_parse!(
+       bytes: take!(kyber::SECRET_KEY_SIZE)
+    >> (PlainSecretParamsRef::Kyber ( bytes ))
 ));

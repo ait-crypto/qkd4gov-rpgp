@@ -26,6 +26,7 @@ pub const SECRET_KEY_SIZE: usize = dilithium5::secret_key_bytes();
 pub const PUBLIC_KEY_SIZE: usize = dilithium5::public_key_bytes();
 
 #[derive(Clone, PartialEq)]
+#[repr(transparent)]
 pub struct DilithiumPublicKey {
     pk: dilithium5::PublicKey,
 }
@@ -67,6 +68,7 @@ impl TryFrom<&[u8]> for DilithiumPublicKey {
 }
 
 #[derive(Clone, PartialEq)]
+#[repr(transparent)]
 pub struct DilithiumSecretKey {
     sk: dilithium5::SecretKey,
 }

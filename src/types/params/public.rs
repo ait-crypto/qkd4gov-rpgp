@@ -4,7 +4,7 @@ use crate::crypto::dilithium::DilithiumPublicKey;
 use crate::crypto::ecc_curve::ECCCurve;
 use crate::crypto::hash::HashAlgorithm;
 use crate::crypto::sym::SymmetricKeyAlgorithm;
-use crate::crypto::PicnicPublicKey;
+use crate::crypto::{KyberPublicKey, PicnicPublicKey};
 use crate::errors::Result;
 use crate::ser::Serialize;
 use crate::types::Mpi;
@@ -45,7 +45,7 @@ pub enum PublicParams {
         pk: PicnicPublicKey,
     },
     Kyber {
-        pk: Mpi,
+        pk: Box<KyberPublicKey>,
         // hash: HashAlgorithm,
         // alg_sym: SymmetricKeyAlgorithm,
     },
@@ -120,7 +120,7 @@ impl Serialize for PublicParams {
                 writer.write_all(pk.as_ref())?;
             }
             PublicParams::Kyber { ref pk } => {
-                pk.to_writer(writer)?;
+                writer.write_all(pk.as_ref().as_ref())?;
             }
             PublicParams::Dilithium { ref pk } => {
                 writer.write_all(pk.as_ref().as_ref())?;
@@ -190,7 +190,7 @@ impl fmt::Debug for PublicParams {
                 .finish(),
             PublicParams::Kyber { pk } => f
                 .debug_struct("PublicParams::Kyber")
-                .field("pk", pk)
+                .field("pk", &pk.as_ref().as_ref())
                 .finish(),
             PublicParams::Dilithium { pk } => f
                 .debug_struct("PublicParams::Dilithium")
