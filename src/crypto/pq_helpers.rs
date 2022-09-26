@@ -62,6 +62,7 @@ pub fn from_mpi(mpi: &Mpi) -> Result<Vec<u8>> {
     }
 }
 
+/*
 pub fn strip_marker(bytes: &[u8]) -> Result<&[u8]> {
     if !bytes.is_empty() && bytes[0] == MARKER {
         Ok(&bytes[1..])
@@ -69,6 +70,7 @@ pub fn strip_marker(bytes: &[u8]) -> Result<&[u8]> {
         Err(Error::Message("Invalid Mpi packet".to_owned()))
     }
 }
+*/
 
 #[cfg(test)]
 mod test {
