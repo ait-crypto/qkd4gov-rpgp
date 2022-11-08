@@ -3,6 +3,7 @@ use std::ops::Deref;
 
 use block_padding::{Padding, Pkcs7};
 use digest::Digest;
+use generic_array::{typenum::U8, GenericArray};
 use zeroize::Zeroize;
 
 use crate::crypto::pq_helpers::{as_mpi, from_mpi};
@@ -157,20 +158,34 @@ pub fn decrypt(priv_key: &KyberSecretKey, mpis: &[Mpi], fingerprint: &[u8]) -> R
     encrypted_session_key_vec[(encrypted_key_len - encrypted_session_key.len())..]
         .copy_from_slice(encrypted_session_key);
 
+    let mut decrypted_key_padded = aes_kw::unwrap(&z, &encrypted_session_key_vec)?;
     // PKCS5 unpadding (PKCS5 is PKCS7 with a blocksize of 8)
-    aes_kw::unwrap(&z, &encrypted_session_key_vec)
-        .and_then(|v| Pkcs7::unpad(&v).map(|v| v.to_vec()).map_err(Into::into))
+    {
+        let len = decrypted_key_padded.len();
+        let block_size = 8;
+        ensure!(len % block_size == 0, "invalid key length {}", len);
+        ensure!(!decrypted_key_padded.is_empty(), "empty key is not valid");
+
+        // grab the last block
+        let offset = len - block_size;
+        let last_block = GenericArray::<u8, U8>::from_slice(&decrypted_key_padded[offset..]);
+        let unpadded_last_block = Pkcs7::unpad(last_block)?;
+        let unpadded_len = offset + unpadded_last_block.len();
+        decrypted_key_padded.truncate(unpadded_len);
+    }
+
+    Ok(decrypted_key_padded)
 }
 
 /// Key Derivation Function for ECDH (as defined in RFC 6637).
 /// https://tools.ietf.org/html/rfc6637#section-7
 fn kdf(shared_secret: &[u8], fingerprint: &[u8]) -> Vec<u8> {
     let mut hasher = sha3::Sha3_512::default();
-    hasher.update(&[0, 0, 0, 1]);
+    hasher.update([0, 0, 0, 1]);
     hasher.update(shared_secret);
-    hasher.update(&[OID.len() as u8]);
+    hasher.update([OID.len() as u8]);
     hasher.update(OID);
-    hasher.update(&[
+    hasher.update([
         PublicKeyAlgorithm::Kyber as u8,
         0x03, // length of the following fields
         0x01, // reserved for future extensions
@@ -201,7 +216,19 @@ pub fn encrypt(
     let len = plain.len();
     let mut plain_padded = plain.to_vec();
     plain_padded.resize(len + 8, 0);
-    let plain_padded_ref = Pkcs7::pad(&mut plain_padded, len, 8)?;
+
+    let plain_padded_ref = {
+        let pos = len;
+        let block_size = 8;
+        let bs = block_size * (pos / block_size);
+        ensure!(
+            plain_padded.len() >= bs && plain_padded.len() - bs >= block_size,
+            "unable to pad"
+        );
+        let buf = GenericArray::<u8, U8>::from_mut_slice(&mut plain_padded[bs..bs + block_size]);
+        Pkcs7::pad(buf, pos - bs);
+        &plain_padded[..bs + block_size]
+    };
 
     // Peform AES Key Wrap
     let encrypted_key = aes_kw::wrap(&z, plain_padded_ref)?;
