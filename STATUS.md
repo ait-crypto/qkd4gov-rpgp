@@ -34,15 +34,16 @@ Symbols:
   - [ ] ECDSA
   - [x] EdDSA
 - [ ] Supported Elliptic Curves
-  - [ ] NIST P256
-  - [ ] NIST P384
+  - [X] NIST P256
+  - [X] NIST P384
   - [ ] NIST P521
-  - [ ] brainpool256rl
-  - [ ] brainpool521rl
+  - [ ] brainpoolP256r1
+  - [ ] brainpoolP384r1
+  - [ ] brainpoolP512r1
   - [x] Curve 25519
-- [ ] Symmetric Algorithms
+- [x] Symmetric Algorithms
   - [x] Plaintext
-  - [ ] IDEA
+  - [x] IDEA
   - [x] DES
   - [x] CAST5
   - [x] Blowfish
@@ -50,9 +51,9 @@ Symbols:
   - [x] AES 192
   - [x] AES 256
   - [x] Twofish
-  - [ ] Camellia 128
-  - [ ] Camellia 192
-  - [ ] Camellia 256
+  - [x] Camellia 128
+  - [x] Camellia 192
+  - [x] Camellia 256
 - [x] Hash Algorithms
   - [x] MD5
   - [x] SHA-1

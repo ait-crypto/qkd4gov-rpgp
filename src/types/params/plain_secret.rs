@@ -210,9 +210,6 @@ impl<'a> PlainSecretParamsRef<'a> {
             PlainSecretParamsRef::Elgamal(_) => {
                 unimplemented_err!("Elgamal");
             }
-            PlainSecretParamsRef::ECDSA(_) => {
-                unimplemented_err!("ECDSA");
-            }
             PlainSecretParamsRef::Picnic(sk) => {
                 Ok(SecretKeyRepr::Picnic(PicnicSecretKey::try_from(*sk)?))
             }
@@ -222,6 +219,28 @@ impl<'a> PlainSecretParamsRef<'a> {
             PlainSecretParamsRef::Dilithium(sk) => {
                 Ok(SecretKeyRepr::Dilithium(DilithiumSecretKey::try_from(*sk)?))
             }
+            PlainSecretParamsRef::ECDSA(d) => match public_params {
+                PublicParams::ECDSA { ref curve, .. } => match *curve {
+                    ECCCurve::P256 => {
+                        ensure!(d.len() <= 32, "invalid secret");
+
+                        Ok(SecretKeyRepr::ECDSA(ECDSASecretKey {
+                            oid: curve.oid(),
+                            x: d.into(),
+                        }))
+                    }
+                    ECCCurve::P384 => {
+                        ensure!(d.len() <= 48, "invalid secret");
+
+                        Ok(SecretKeyRepr::ECDSA(ECDSASecretKey {
+                            oid: curve.oid(),
+                            x: d.into(),
+                        }))
+                    }
+                    _ => unsupported_err!("curve {:?} for ECDSA", curve.to_string()),
+                },
+                _ => unreachable!("inconsistent key state"),
+            },
         }
     }
 }

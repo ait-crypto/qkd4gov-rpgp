@@ -16,7 +16,7 @@ use crate::crypto::KyberSecretKey;
 pub enum SecretKeyRepr {
     RSA(RsaPrivateKey),
     DSA(DSASecretKey),
-    ECDSA,
+    ECDSA(ECDSASecretKey),
     ECDH(ECDHSecretKey),
     EdDSA(EdDSASecretKey),
     Picnic(PicnicSecretKey),
@@ -59,6 +59,23 @@ impl fmt::Debug for EdDSASecretKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("EdDSASecretKey")
             .field("secret", &"[..]")
+            .field("oid", &hex::encode(&self.oid))
+            .finish()
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Zeroize)]
+#[zeroize(drop)]
+pub struct ECDSASecretKey {
+    /// The secret point.
+    pub x: BigUint,
+    pub oid: Vec<u8>,
+}
+
+impl fmt::Debug for ECDSASecretKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ECDSASecretKey")
+            .field("x", &"[..]")
             .field("oid", &hex::encode(&self.oid))
             .finish()
     }

@@ -78,11 +78,7 @@ fn test_parse_msg(entry: &str, base_path: &str, is_normalized: bool) {
     match &message {
         Message::Encrypted { .. } => {
             let (mut decrypter, ids) = message
-                .decrypt(
-                    || "".to_string(),
-                    || details.passphrase.clone(),
-                    &[&decrypt_key],
-                )
+                .decrypt(|| details.passphrase.clone(), &[&decrypt_key])
                 .expect("failed to init decryption");
             assert_eq!(ids.len(), 1);
 
@@ -217,8 +213,7 @@ msg_test!(msg_pgp_10_0_003, "pgp-10-0-003", false);
 msg_test!(msg_pgp_10_0_004, "pgp-10-0-004", false);
 msg_test!(msg_pgp_10_0_005, "pgp-10-0-005", false);
 msg_test!(msg_pgp_10_0_006, "pgp-10-0-006", false);
-// IDEA
-// msg_test!(msg_pgp_10_0_007, "pgp-10-0-007", true);
+msg_test!(msg_pgp_10_0_007, "pgp-10-0-007", false);
 
 // ECDH
 // msg_test!(msg_openkeychain_001, "openkeychain-001", true);
@@ -261,7 +256,7 @@ fn msg_large_indeterminate_len() {
         SignedSecretKey::from_armor_single(&mut key_file).expect("failed to parse key");
 
     let decrypted = message
-        .decrypt(|| "".to_string(), || "moon".to_string(), &[&decrypt_key])
+        .decrypt(|| "moon".to_string(), &[&decrypt_key])
         .expect("failed to decrypt message")
         .0
         .next()
