@@ -106,6 +106,7 @@ default = []
 profile = ["gperftools"]
 asm = ["sha1/asm", "sha2/asm", "md-5/asm"]
 wasm = ["chrono/wasmbind", "getrandom", "getrandom/js"]
+nightly = []
 
 [profile.bench]
 debug = true
