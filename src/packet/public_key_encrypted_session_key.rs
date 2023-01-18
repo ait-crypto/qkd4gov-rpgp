@@ -81,8 +81,13 @@ named_args!(parse_mpis<'a>(alg: &'a PublicKeyAlgorithm) <Vec<Mpi>>, switch!(
     &PublicKeyAlgorithm::RSA |
     &PublicKeyAlgorithm::RSASign |
     &PublicKeyAlgorithm::RSAEncrypt |
-    &PublicKeyAlgorithm::Picnic |
-    &PublicKeyAlgorithm::Kyber => map!(mpi, |v| vec![v.to_owned()]) |
+    &PublicKeyAlgorithm::Picnic => map!(mpi, |v| vec![v.to_owned()]) |
+    &PublicKeyAlgorithm::Kyber  => do_parse!(
+            first: mpi
+        >> second: mpi
+        >> third: mpi
+        >> (vec![first.to_owned(), second.to_owned(), third.to_owned()])
+    ) |
     &PublicKeyAlgorithm::Elgamal |
     &PublicKeyAlgorithm::ElgamalSign => do_parse!(
           first: mpi
