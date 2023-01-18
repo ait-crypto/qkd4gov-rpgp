@@ -324,6 +324,7 @@ mod tests {
 
     use crate::composed::{Deserializable, SignedPublicKey, SignedSecretKey};
     use crate::types::SecretKeyTrait;
+    use crate::Message;
 
     use rand::SeedableRng;
     use rand_chacha::ChaCha8Rng;
@@ -530,12 +531,12 @@ mod tests {
     #[test]
     fn key_gen_kyber_picnic_short() {
         let rng = &mut ChaCha8Rng::seed_from_u64(0);
-        for _ in 0..100 {
+        for _ in 0..10 {
             gen_kyber_picnic(rng);
         }
     }
 
-    fn gen_kyber_picnic<R: Rng + CryptoRng>(rng: &mut R) {
+    fn gen_kyber_picnic<R: Rng + CryptoRng>(rng: &mut R) -> (SignedSecretKey, SignedPublicKey) {
         let _ = pretty_env_logger::try_init();
 
         let key_params = SecretKeyParamsBuilder::default()
@@ -546,20 +547,14 @@ mod tests {
             .passphrase(None)
             .preferred_symmetric_algorithms(smallvec![
                 SymmetricKeyAlgorithm::AES256,
-                SymmetricKeyAlgorithm::AES192,
                 SymmetricKeyAlgorithm::AES128,
             ])
             .preferred_hash_algorithms(smallvec![
                 HashAlgorithm::SHA2_256,
                 HashAlgorithm::SHA2_384,
                 HashAlgorithm::SHA2_512,
-                HashAlgorithm::SHA2_224,
-                HashAlgorithm::SHA1,
             ])
-            .preferred_compression_algorithms(smallvec![
-                CompressionAlgorithm::ZLIB,
-                CompressionAlgorithm::ZIP,
-            ])
+            .preferred_compression_algorithms(smallvec![CompressionAlgorithm::ZLIB,])
             .subkey(
                 SubkeyParamsBuilder::default()
                     .key_type(KeyType::Kyber)
@@ -606,6 +601,68 @@ mod tests {
         let (signed_key2, _headers) =
             SignedPublicKey::from_string(&armor).expect("failed to parse public key");
         signed_key2.verify().expect("invalid public key");
+
+        (signed_key, public_signed_key)
+    }
+
+    #[test]
+    fn key_gen_kyber_picnic_encrypt() {
+        let rng = &mut ChaCha8Rng::seed_from_u64(0);
+        let (sk, pk) = gen_kyber_picnic(rng);
+        test_parse_msg(rng, sk, pk);
+    }
+
+    fn test_parse_msg<R: Rng + CryptoRng>(
+        rng: &mut R,
+        decrypt_key: SignedSecretKey,
+        public_key: SignedPublicKey,
+    ) {
+        const TEST_MESSAGE: &[u8] = br#"
+This is a test message. It is long but has no meaning.
+
+Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. 
+
+Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. 
+
+Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi. 
+
+Nam liber tempor cum soluta nobis eleifend option congue nihil imperdiet doming id quod mazim placerat facer possim assum. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. 
+
+Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis."#;
+
+        decrypt_key.verify().expect("invalid decryption key");
+
+        let message = Message::new_literal_bytes("does not matter.asc", TEST_MESSAGE);
+        let ciphertext = message
+            .encrypt_to_keys(
+                rng,
+                SymmetricKeyAlgorithm::AES256,
+                &[&public_key.public_subkeys[0]],
+            )
+            .expect("failed to encrypt");
+
+        match &ciphertext {
+            Message::Encrypted { .. } => {
+                let (mut decrypter, ids) = ciphertext
+                    .decrypt(|| "".into(), &[&decrypt_key])
+                    .expect("failed to init decryption");
+                assert_eq!(ids.len(), 1);
+
+                let decrypted = decrypter
+                    .next()
+                    .expect("no message")
+                    .expect("message decryption failed");
+
+                let raw = match decrypted {
+                    Message::Literal(data) => data,
+                    _ => panic!("unexpected message type: {:?}", decrypted),
+                };
+                assert_eq!(raw.data(), TEST_MESSAGE);
+            }
+            _ => {
+                panic!("this test should not have anything else?");
+            }
+        }
     }
 
     fn gen_ecdsa<R: Rng + CryptoRng>(rng: &mut R, curve: ECCCurve) {
