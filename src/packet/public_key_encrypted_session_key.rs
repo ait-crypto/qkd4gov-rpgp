@@ -135,7 +135,8 @@ impl Serialize for PublicKeyEncryptedSessionKey {
             | PublicKeyAlgorithm::RSAEncrypt
             | PublicKeyAlgorithm::Elgamal
             | PublicKeyAlgorithm::ElgamalSign
-            | PublicKeyAlgorithm::Picnic => {
+            | PublicKeyAlgorithm::Picnic
+            | PublicKeyAlgorithm::Kyber => {
                 for mpi in &self.mpis {
                     mpi.to_writer(writer)?;
                 }
