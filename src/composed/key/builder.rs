@@ -232,7 +232,7 @@ pub enum KeyType {
     EdDSA,
     /// Signing with Picnic
     Picnic,
-    /// Encrpyting with Kyber
+    /// Encryption with Kyber
     Kyber,
     /// Signing with Dilithium
     Dilithium,
