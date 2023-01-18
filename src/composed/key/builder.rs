@@ -320,6 +320,8 @@ impl KeyType {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Cursor;
+
     use super::*;
 
     use crate::composed::{Deserializable, SignedPublicKey, SignedSecretKey};
@@ -640,6 +642,12 @@ Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie co
                 &[&public_key.public_subkeys[0]],
             )
             .expect("failed to encrypt");
+
+        let serialized_ciphertext = ciphertext
+            .to_armored_string(None)
+            .expect("write armored message");
+        let (ciphertext, _headers) = Message::from_armor_single(Cursor::new(serialized_ciphertext))
+            .expect("read armored message");
 
         match &ciphertext {
             Message::Encrypted { .. } => {
