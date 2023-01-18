@@ -759,13 +759,6 @@ mod tests {
         signed_key2.verify().expect("invalid public key");
     }
 
-    fn key_gen_ecdsa_p256() {
-        let rng = &mut ChaCha8Rng::seed_from_u64(0);
-        for _ in 0..100 {
-            gen_ecdsa(rng, ECCCurve::P256);
-        }
-    }
-
     #[test]
     fn key_gen_ecdsa_p384() {
         let rng = &mut ChaCha8Rng::seed_from_u64(0);
