@@ -14,7 +14,7 @@ pub trait KeyTrait: ::std::fmt::Debug {
 
         matches!(
             self.algorithm(),
-            RSA | RSASign | ElgamalSign | DSA | ECDSA | EdDSA
+            RSA | RSASign | ElgamalSign | DSA | ECDSA | EdDSA | Picnic | Dilithium
         )
     }
 
@@ -23,7 +23,7 @@ pub trait KeyTrait: ::std::fmt::Debug {
 
         matches!(
             self.algorithm(),
-            RSA | RSAEncrypt | ECDH | DiffieHellman | Elgamal
+            RSA | RSAEncrypt | ECDH | DiffieHellman | Elgamal | Kyber
         )
     }
 }
