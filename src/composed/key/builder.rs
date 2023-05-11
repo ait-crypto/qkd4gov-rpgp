@@ -6,7 +6,8 @@ use smallvec::SmallVec;
 
 use crate::composed::{KeyDetails, SecretKey, SecretSubkey};
 use crate::crypto::{
-    dilithium, ecdh, ecdsa, eddsa, kyber, picnic, rsa, ECCCurve, HashAlgorithm, PublicKeyAlgorithm, SymmetricKeyAlgorithm,
+    dilithium, ecdh, ecdsa, eddsa, kyber, picnic, rsa, ECCCurve, HashAlgorithm, PublicKeyAlgorithm,
+    SymmetricKeyAlgorithm,
 };
 use crate::errors::Result;
 use crate::packet::{self, KeyFlags, UserAttribute, UserId};
@@ -609,6 +610,13 @@ mod tests {
 
     #[test]
     fn key_gen_kyber_picnic_encrypt() {
+        let rng = &mut ChaCha8Rng::seed_from_u64(0);
+        let (sk, pk) = gen_kyber_picnic(rng);
+        test_parse_msg(rng, sk, pk);
+    }
+
+    #[test]
+    fn key_gen_kyber_dilithium_encrypt() {
         let rng = &mut ChaCha8Rng::seed_from_u64(0);
         let (sk, pk) = gen_kyber_picnic(rng);
         test_parse_msg(rng, sk, pk);
