@@ -1,3 +1,17 @@
+# rPGP with post-quantum secure schemes
+
+This repository provides rPGP integrated with some post-quantum schemes from the NIST PQC
+competition. The implementations of post-quantum signature and public-key encryption schemes are
+provided by various crates.
+
+The modification were authored by Sebastian Ramacher from AIT Austrian Institute of Technology and
+are licensed under the same license as rPGP.
+
+This work was funded by the Austrian security research programme of the Federal Ministry of Finance
+(BMF) as part of the project QKD4Gov.
+
+The original README follows.
+
 # rPGP
 
 [![crates.io][crate-image]][crate-link]
